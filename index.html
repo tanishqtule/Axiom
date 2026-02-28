@@ -1,0 +1,619 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Axiom — Your Knowledge Universe</title>
+
+  <!-- Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=Inter:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+
+  <!-- Highlight.js theme -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/atom-one-dark.min.css" />
+
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+
+<!-- ─── CURSOR GLOW ─── -->
+<div id="cursor-glow"></div>
+
+<!-- ══════════════════════════════════════════════
+     SPLASH SCREEN
+══════════════════════════════════════════════ -->
+<div id="splash">
+  <canvas id="splash-canvas"></canvas>
+
+  <div class="splash-overlay">
+    <div class="splash-content">
+      <div class="splash-badge">✦ Knowledge Reimagined</div>
+
+      <div class="logo-wrap">
+        <svg class="splash-logo-icon" viewBox="0 0 80 80" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <defs>
+            <linearGradient id="lg1" x1="0" y1="0" x2="80" y2="80" gradientUnits="userSpaceOnUse">
+              <stop offset="0%" stop-color="#7c3aed"/>
+              <stop offset="50%" stop-color="#2563eb"/>
+              <stop offset="100%" stop-color="#06b6d4"/>
+            </linearGradient>
+            <linearGradient id="lg2" x1="0" y1="40" x2="80" y2="80" gradientUnits="userSpaceOnUse">
+              <stop offset="0%" stop-color="#2563eb" stop-opacity="0.6"/>
+              <stop offset="100%" stop-color="#7c3aed" stop-opacity="0.3"/>
+            </linearGradient>
+          </defs>
+          <!-- Outer hex -->
+          <path d="M40 6 L70 23 L70 57 L40 74 L10 57 L10 23 Z" stroke="url(#lg1)" stroke-width="1.5" fill="none"/>
+          <!-- Upper face -->
+          <path d="M40 6 L70 23 L40 40 L10 23 Z" fill="url(#lg2)" stroke="url(#lg1)" stroke-width="1"/>
+          <!-- Gem lines -->
+          <line x1="10" y1="23" x2="40" y2="40" stroke="url(#lg1)" stroke-width="0.8" opacity="0.7"/>
+          <line x1="70" y1="23" x2="40" y2="40" stroke="url(#lg1)" stroke-width="0.8" opacity="0.7"/>
+          <line x1="40" y1="40" x2="40" y2="74" stroke="url(#lg1)" stroke-width="0.8" opacity="0.7"/>
+          <!-- Centre gem -->
+          <circle cx="40" cy="40" r="4" fill="url(#lg1)"/>
+          <circle cx="40" cy="40" r="7" fill="url(#lg1)" opacity="0.2"/>
+        </svg>
+        <h1 class="splash-title">Axiom</h1>
+      </div>
+
+      <p class="splash-subtitle">Your ideas, infinitely connected.</p>
+      <p class="splash-desc">A premium knowledge space where thoughts form constellations.<br>Capture, connect, and visualise in 3D.</p>
+
+      <button id="enter-btn" class="enter-btn">
+        <span>Enter Your Universe</span>
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M5 12h14M12 5l7 7-7 7"/>
+        </svg>
+        <div class="btn-shimmer"></div>
+      </button>
+
+      <div class="splash-stats">
+        <div class="stat"><span class="stat-num">∞</span><span class="stat-label">Notes</span></div>
+        <div class="stat-div"></div>
+        <div class="stat"><span class="stat-num">3D</span><span class="stat-label">Graph</span></div>
+        <div class="stat-div"></div>
+        <div class="stat"><span class="stat-num">100%</span><span class="stat-label">Private</span></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════
+     MAIN APP
+══════════════════════════════════════════════ -->
+<div id="app" class="hidden">
+
+  <!-- ─── SIDEBAR ─── -->
+  <aside id="sidebar">
+
+    <div class="sidebar-header">
+      <div class="sidebar-logo">
+        <svg viewBox="0 0 40 40" fill="none" class="sl-icon">
+          <defs>
+            <linearGradient id="slg" x1="0" y1="0" x2="40" y2="40" gradientUnits="userSpaceOnUse">
+              <stop offset="0%" stop-color="#7c3aed"/>
+              <stop offset="100%" stop-color="#06b6d4"/>
+            </linearGradient>
+          </defs>
+          <path d="M20 3 L35 12 L35 28 L20 37 L5 28 L5 12 Z" stroke="url(#slg)" stroke-width="1.5" fill="none"/>
+          <path d="M20 3 L35 12 L20 21 L5 12 Z" fill="rgba(124,58,237,0.15)" stroke="url(#slg)" stroke-width="0.8"/>
+          <circle cx="20" cy="21" r="3" fill="url(#slg)"/>
+        </svg>
+        <span class="sl-text">Axiom</span>
+      </div>
+      <button id="sidebar-collapse-btn" class="icon-btn" title="Collapse Sidebar">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M11 19l-7-7 7-7M18 19l-7-7 7-7"/>
+        </svg>
+      </button>
+    </div>
+
+    <div class="search-wrap">
+      <svg class="si" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
+      </svg>
+      <input type="text" id="search-input" placeholder="Search notes…" class="search-input" autocomplete="off" />
+      <kbd class="skbd">⌘K</kbd>
+    </div>
+
+    <button id="new-note-btn" class="new-note-btn">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+        <path d="M12 5v14M5 12h14"/>
+      </svg>
+      New Note
+    </button>
+
+    <div class="sidebar-section">
+      <div class="sec-hdr">
+        <span>Notes</span>
+        <span id="note-count" class="note-count-badge">0</span>
+      </div>
+      <div id="note-list" class="note-list"></div>
+    </div>
+
+    <div class="sidebar-section">
+      <div class="sec-hdr">Tags</div>
+      <div id="tags-cloud" class="tags-cloud"></div>
+    </div>
+
+    <div class="sidebar-footer">
+      <button class="sf-btn" id="graph-btn" title="3D Graph">
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="12" cy="5" r="2"/><circle cx="19" cy="19" r="2"/><circle cx="5" cy="19" r="2"/>
+          <path d="M12 7v3m0 0l5.5 7m-5.5-7L6.5 17"/>
+        </svg>
+        <span>Graph</span>
+      </button>
+      <button class="sf-btn" id="canvas-btn" title="Canvas">
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <rect x="3" y="3" width="7" height="7" rx="1"/>
+          <rect x="14" y="3" width="7" height="7" rx="1"/>
+          <rect x="3" y="14" width="7" height="7" rx="1"/>
+          <rect x="14" y="14" width="7" height="7" rx="1"/>
+        </svg>
+        <span>Canvas</span>
+      </button>
+      <button class="sf-btn" id="settings-btn" title="Settings">
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="12" cy="12" r="3"/>
+          <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+        </svg>
+        <span>Settings</span>
+      </button>
+    </div>
+
+  </aside><!-- /sidebar -->
+
+  <!-- ─── EDITOR AREA ─── -->
+  <main id="editor-area">
+
+    <!-- Welcome screen -->
+    <div id="welcome-screen">
+      <div class="welcome-content">
+        <div class="welcome-orb"></div>
+        <div class="welcome-graph-preview">
+          <svg viewBox="0 0 200 180" fill="none">
+            <defs>
+              <radialGradient id="ng1" cx="50%" cy="50%" r="50%">
+                <stop offset="0%" stop-color="#7c3aed" stop-opacity="0.6"/>
+                <stop offset="100%" stop-color="#7c3aed" stop-opacity="0"/>
+              </radialGradient>
+              <radialGradient id="ng2" cx="50%" cy="50%" r="50%">
+                <stop offset="0%" stop-color="#06b6d4" stop-opacity="0.6"/>
+                <stop offset="100%" stop-color="#06b6d4" stop-opacity="0"/>
+              </radialGradient>
+            </defs>
+            <!-- Connecting lines -->
+            <line x1="100" y1="50" x2="60" y2="120" stroke="#7c3aed" stroke-width="1" opacity="0.4"/>
+            <line x1="100" y1="50" x2="145" y2="130" stroke="#7c3aed" stroke-width="1" opacity="0.4"/>
+            <line x1="60" y1="120" x2="145" y2="130" stroke="#06b6d4" stroke-width="1" opacity="0.3"/>
+            <line x1="100" y1="50" x2="165" y2="60" stroke="#2563eb" stroke-width="1" opacity="0.4"/>
+            <line x1="100" y1="50" x2="35" y2="60" stroke="#2563eb" stroke-width="1" opacity="0.4"/>
+            <!-- Nodes -->
+            <circle cx="100" cy="50" r="14" fill="url(#ng1)"/>
+            <circle cx="100" cy="50" r="8" fill="#7c3aed" opacity="0.9"/>
+            <circle cx="60" cy="120" r="10" fill="url(#ng2)"/>
+            <circle cx="60" cy="120" r="6" fill="#06b6d4" opacity="0.9"/>
+            <circle cx="145" cy="130" r="10" fill="url(#ng2)"/>
+            <circle cx="145" cy="130" r="6" fill="#06b6d4" opacity="0.9"/>
+            <circle cx="165" cy="60" r="8" fill="#2563eb" opacity="0.6"/>
+            <circle cx="35" cy="60" r="8" fill="#2563eb" opacity="0.6"/>
+          </svg>
+        </div>
+        <h2 class="welcome-title">Your Knowledge Universe</h2>
+        <p class="welcome-desc">Select a note to start editing, or create a new one.<br>Use <code>[[Note Name]]</code> to link ideas together.</p>
+        <div class="welcome-actions">
+          <button class="welcome-btn primary" id="welcome-new-btn">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12h14"/></svg>
+            New Note
+          </button>
+          <button class="welcome-btn secondary" id="welcome-graph-btn">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="12" cy="5" r="2"/><circle cx="19" cy="19" r="2"/><circle cx="5" cy="19" r="2"/>
+              <path d="M12 7v3m0 0l5.5 7m-5.5-7L6.5 17"/>
+            </svg>
+            View Graph
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Note Editor -->
+    <div id="note-editor" class="hidden">
+
+      <div class="editor-topbar">
+        <div class="editor-tabs">
+          <button class="etab active" data-tab="edit">Edit</button>
+          <button class="etab" data-tab="preview">Preview</button>
+          <button class="etab" data-tab="split">Split</button>
+        </div>
+        <div class="editor-actions">
+          <span id="save-status" class="save-status saved">● Saved</span>
+          <button class="icon-btn" id="focus-btn" title="Focus Mode">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/>
+            </svg>
+          </button>
+          <button class="icon-btn" id="export-btn" title="Export as Markdown">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>
+            </svg>
+          </button>
+          <button class="icon-btn danger" id="delete-note-btn" title="Delete Note">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/>
+            </svg>
+          </button>
+        </div>
+      </div>
+
+      <!-- EDIT PANE -->
+      <div id="edit-pane" class="editor-pane active-pane">
+        <div class="note-meta-bar">
+          <input type="text" id="note-title" class="note-title-input" placeholder="Untitled Note…" />
+        </div>
+
+        <div class="toolbar" id="toolbar">
+          <button class="tb" data-action="bold" title="Bold"><b>B</b></button>
+          <button class="tb" data-action="italic" title="Italic"><i>I</i></button>
+          <button class="tb" data-action="strikethrough" title="Strikethrough"><s>S</s></button>
+          <div class="tb-sep"></div>
+          <button class="tb" data-action="h1" title="Heading 1">H1</button>
+          <button class="tb" data-action="h2" title="Heading 2">H2</button>
+          <button class="tb" data-action="h3" title="Heading 3">H3</button>
+          <div class="tb-sep"></div>
+          <button class="tb" data-action="link" title="Link">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+              <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/>
+              <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>
+            </svg>
+          </button>
+          <button class="tb" data-action="wikilink" title="Note Link [[]]">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M13 17l5-5-5-5M11 7l-5 5 5 5"/>
+            </svg>
+          </button>
+          <button class="tb" data-action="code" title="Inline Code">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+              <polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/>
+            </svg>
+          </button>
+          <button class="tb" data-action="codeblock" title="Code Block">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <rect x="2" y="4" width="20" height="16" rx="2"/><path d="M8 9l-3 3 3 3M16 9l3 3-3 3"/>
+            </svg>
+          </button>
+          <div class="tb-sep"></div>
+          <button class="tb" data-action="ul" title="Bullet List">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+              <line x1="9" y1="6" x2="20" y2="6"/><line x1="9" y1="12" x2="20" y2="12"/><line x1="9" y1="18" x2="20" y2="18"/>
+              <circle cx="4" cy="6" r="1.5" fill="currentColor" stroke="none"/><circle cx="4" cy="12" r="1.5" fill="currentColor" stroke="none"/><circle cx="4" cy="18" r="1.5" fill="currentColor" stroke="none"/>
+            </svg>
+          </button>
+          <button class="tb" data-action="ol" title="Numbered List">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+              <line x1="10" y1="6" x2="21" y2="6"/><line x1="10" y1="12" x2="21" y2="12"/><line x1="10" y1="18" x2="21" y2="18"/>
+              <path d="M4 6h1v4" stroke-linecap="round"/><path d="M4 10h2"/>
+            </svg>
+          </button>
+          <button class="tb" data-action="checkbox" title="Checkbox">☑</button>
+          <button class="tb" data-action="quote" title="Blockquote">❝</button>
+          <button class="tb" data-action="hr" title="Divider">—</button>
+          <div class="tb-sep"></div>
+          <button class="tb tag-tb" data-action="tag" title="Add Tag">#tag</button>
+        </div>
+
+        <div class="tag-input-row" id="tag-input-row">
+          <div id="note-tags" class="note-tags-bar"></div>
+          <input type="text" id="tag-input" class="tag-input" placeholder="Add tag… (Enter to save)" autocomplete="off"/>
+        </div>
+
+        <textarea id="note-content" class="note-content" placeholder="Start writing…&#10;&#10;Use [[Note Name]] to link notes&#10;Use #tag to add tags&#10;Markdown is fully supported"></textarea>
+
+        <div class="editor-footer">
+          <span id="word-count" class="ef-stat">0 words</span>
+          <span class="ef-dot">·</span>
+          <span id="char-count" class="ef-stat">0 chars</span>
+          <span class="ef-dot">·</span>
+          <span id="read-time" class="ef-stat">0 min read</span>
+        </div>
+      </div>
+
+      <!-- PREVIEW PANE -->
+      <div id="preview-pane" class="editor-pane hidden">
+        <div class="preview-scroll">
+          <h1 id="preview-title" class="preview-h1"></h1>
+          <div id="preview-body" class="markdown-body"></div>
+        </div>
+      </div>
+
+      <!-- SPLIT PANE -->
+      <div id="split-pane" class="editor-pane hidden split-layout">
+        <div class="split-left">
+          <textarea id="split-editor" class="note-content" placeholder="Start writing…"></textarea>
+        </div>
+        <div class="split-divider"></div>
+        <div class="split-right">
+          <div id="split-preview" class="markdown-body preview-scroll"></div>
+        </div>
+      </div>
+
+    </div><!-- /note-editor -->
+  </main><!-- /editor-area -->
+
+  <!-- ─── RIGHT PANEL ─── -->
+  <aside id="right-panel">
+
+    <div class="rp-section">
+      <div class="rp-header">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="12" cy="5" r="2"/><circle cx="19" cy="19" r="2"/><circle cx="5" cy="19" r="2"/>
+          <path d="M12 7v3m0 0l5.5 7m-5.5-7L6.5 17"/>
+        </svg>
+        Knowledge Graph
+      </div>
+      <div class="mini-graph-container">
+        <canvas id="mini-graph-canvas"></canvas>
+        <button id="expand-graph-btn" class="expand-btn">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"/>
+          </svg>
+          Full Screen
+        </button>
+      </div>
+    </div>
+
+    <div class="rp-section" id="backlinks-section">
+      <div class="rp-header">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/>
+          <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>
+        </svg>
+        Backlinks
+        <span id="backlinks-count" class="rp-badge">0</span>
+      </div>
+      <div id="backlinks-list" class="rp-list">
+        <div class="rp-empty">No backlinks yet</div>
+      </div>
+    </div>
+
+    <div class="rp-section" id="toc-section">
+      <div class="rp-header">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="18" x2="21" y2="18"/>
+        </svg>
+        Contents
+      </div>
+      <div id="toc-list" class="toc-list rp-list">
+        <div class="rp-empty">No headings</div>
+      </div>
+    </div>
+
+    <div class="rp-section">
+      <div class="rp-header">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/>
+        </svg>
+        Properties
+      </div>
+      <div class="props-grid">
+        <span class="pk">Created</span><span class="pv" id="prop-created">—</span>
+        <span class="pk">Modified</span><span class="pv" id="prop-modified">—</span>
+        <span class="pk">Words</span><span class="pv" id="prop-words">—</span>
+        <span class="pk">Links out</span><span class="pv" id="prop-links">—</span>
+      </div>
+    </div>
+
+  </aside><!-- /right-panel -->
+
+</div><!-- /app -->
+
+<!-- ══════════════════════════════════════════════
+     3D GRAPH MODAL
+══════════════════════════════════════════════ -->
+<div id="graph-modal" class="modal-overlay hidden">
+  <div class="graph-modal-inner">
+    <div class="modal-topbar">
+      <div class="modal-title">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="12" cy="5" r="2"/><circle cx="19" cy="19" r="2"/><circle cx="5" cy="19" r="2"/>
+          <path d="M12 7v3m0 0l5.5 7m-5.5-7L6.5 17"/>
+        </svg>
+        Knowledge Graph
+      </div>
+      <div class="modal-controls">
+        <input type="text" id="graph-filter" class="graph-filter" placeholder="Filter nodes…" autocomplete="off"/>
+        <div class="graph-ctrl-group">
+          <button class="gctrl" id="g-zoom-in" title="Zoom In">+</button>
+          <button class="gctrl" id="g-zoom-out" title="Zoom Out">−</button>
+          <button class="gctrl" id="g-reset" title="Reset">⟳</button>
+        </div>
+        <button class="icon-btn" id="close-graph-btn">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M18 6L6 18M6 6l12 12"/>
+          </svg>
+        </button>
+      </div>
+    </div>
+    <canvas id="graph-canvas"></canvas>
+    <div class="graph-legend">
+      <div class="gl-item"><span class="gl-dot" style="background:#7c3aed"></span>Active</div>
+      <div class="gl-item"><span class="gl-dot" style="background:#06b6d4"></span>Linked</div>
+      <div class="gl-item"><span class="gl-dot" style="background:#334155"></span>Unlinked</div>
+    </div>
+    <div id="graph-node-tooltip" class="graph-tooltip hidden"></div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════
+     CANVAS MODAL
+══════════════════════════════════════════════ -->
+<div id="canvas-modal" class="modal-overlay hidden">
+  <div class="canvas-modal-inner">
+    <div class="modal-topbar">
+      <div class="modal-title">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <rect x="3" y="3" width="18" height="18" rx="2"/>
+        </svg>
+        Axiom Canvas
+      </div>
+      <div class="modal-controls">
+        <div class="canvas-tools">
+          <button class="gctrl canvas-tool active" data-tool="pan" title="Pan (Space+Drag)">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M5 9l-3 3 3 3M9 5l3-3 3 3M15 19l-3 3-3-3M19 9l3 3-3 3M2 12h20M12 2v20"/>
+            </svg>
+          </button>
+          <button class="gctrl canvas-tool" data-tool="note" title="Add Note Card">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <rect x="3" y="3" width="18" height="18" rx="2"/><path d="M12 8v8M8 12h8"/>
+            </svg>
+          </button>
+          <button class="gctrl canvas-tool" data-tool="text" title="Add Text">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M4 7V4h16v3M9 20h6M12 4v16"/>
+            </svg>
+          </button>
+        </div>
+        <button class="gctrl" id="canvas-clear" title="Clear Canvas">Clear</button>
+        <button class="icon-btn" id="close-canvas-btn">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M18 6L6 18M6 6l12 12"/>
+          </svg>
+        </button>
+      </div>
+    </div>
+    <div id="canvas-board" class="canvas-board">
+      <div id="canvas-world" class="canvas-world">
+        <div class="canvas-grid-hint">Click on canvas to add a card · Drag to pan · Scroll to zoom</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════
+     SETTINGS MODAL
+══════════════════════════════════════════════ -->
+<div id="settings-modal" class="modal-overlay hidden">
+  <div class="settings-modal-inner">
+    <div class="modal-topbar">
+      <div class="modal-title">Settings</div>
+      <button class="icon-btn" id="close-settings-btn">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M18 6L6 18M6 6l12 12"/>
+        </svg>
+      </button>
+    </div>
+    <div class="settings-body">
+      <div class="settings-section">
+        <h3>Appearance</h3>
+        <div class="setting-row">
+          <label>Theme</label>
+          <div class="theme-swatches">
+            <button class="theme-sw active" data-theme="cosmic" title="Cosmic">
+              <span style="background: linear-gradient(135deg,#7c3aed,#06b6d4)"></span>Cosmic
+            </button>
+            <button class="theme-sw" data-theme="midnight" title="Midnight">
+              <span style="background: linear-gradient(135deg,#1e293b,#334155)"></span>Midnight
+            </button>
+            <button class="theme-sw" data-theme="aurora" title="Aurora">
+              <span style="background: linear-gradient(135deg,#059669,#0891b2)"></span>Aurora
+            </button>
+          </div>
+        </div>
+        <div class="setting-row">
+          <label>Editor Font Size</label>
+          <div class="font-size-ctrl">
+            <button class="gctrl" id="font-dec">−</button>
+            <span id="font-size-val">16px</span>
+            <button class="gctrl" id="font-inc">+</button>
+          </div>
+        </div>
+        <div class="setting-row">
+          <label>Editor Font</label>
+          <select id="font-family-sel" class="setting-select">
+            <option value="Inter">Inter</option>
+            <option value="'JetBrains Mono'">JetBrains Mono</option>
+            <option value="'Space Grotesk'">Space Grotesk</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="settings-section">
+        <h3>Data</h3>
+        <div class="setting-row">
+          <label>Export Vault</label>
+          <button class="setting-btn" id="export-all-btn">Export as JSON</button>
+        </div>
+        <div class="setting-row">
+          <label>Import Notes</label>
+          <button class="setting-btn" id="import-btn">Import JSON</button>
+          <input type="file" id="import-input" accept=".json" style="display:none"/>
+        </div>
+        <div class="setting-row">
+          <label>Clear All Data</label>
+          <button class="setting-btn danger" id="clear-vault-btn">Clear Vault</button>
+        </div>
+      </div>
+
+      <div class="settings-section">
+        <h3>About Axiom</h3>
+        <p class="about-text">
+          Axiom v1.0 &mdash; Your Knowledge Universe.<br>
+          A premium 3D note-taking experience.<br>
+          All data stored locally in your browser.
+        </p>
+        <div class="about-features">
+          <span class="af">✦ Markdown editor</span>
+          <span class="af">✦ Bi-directional links</span>
+          <span class="af">✦ 3D knowledge graph</span>
+          <span class="af">✦ Infinite canvas</span>
+          <span class="af">✦ Smart search</span>
+          <span class="af">✦ Tag system</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ─── TOAST CONTAINER ─── -->
+<div id="toast-container"></div>
+
+<!-- ─── CONTEXT MENU ─── -->
+<div id="ctx-menu" class="ctx-menu hidden">
+  <button class="ctx-item" data-action="open">
+    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+    </svg>
+    Open
+  </button>
+  <button class="ctx-item" data-action="duplicate">
+    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+      <rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
+    </svg>
+    Duplicate
+  </button>
+  <div class="ctx-sep"></div>
+  <button class="ctx-item danger" data-action="delete">
+    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+      <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/>
+    </svg>
+    Delete
+  </button>
+</div>
+
+<!-- ─── LINK SUGGESTION DROPDOWN ─── -->
+<div id="link-suggest" class="link-suggest hidden"></div>
+
+<!-- ══════════════════════════════════════════════
+     SCRIPTS (order matters)
+══════════════════════════════════════════════ -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/marked@9.1.6/marked.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+<script src="app.js"></script>
+<script src="graph.js"></script>
+
+</body>
+</html>
