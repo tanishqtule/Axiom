@@ -154,6 +154,12 @@
         </svg>
         <span>Canvas</span>
       </button>
+      <button class="sf-btn" id="guide-btn" title="How to Use">
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/>
+        </svg>
+        <span>Guide</span>
+      </button>
       <button class="sf-btn" id="settings-btn" title="Settings">
         <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
           <circle cx="12" cy="12" r="3"/>
@@ -214,6 +220,12 @@
               <path d="M12 7v3m0 0l5.5 7m-5.5-7L6.5 17"/>
             </svg>
             View Graph
+          </button>
+          <button class="welcome-btn guide" id="welcome-guide-btn">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/>
+            </svg>
+            How to Use
           </button>
         </div>
       </div>
@@ -576,6 +588,394 @@
     </div>
   </div>
 </div>
+
+<!-- ══════════════════════════════════════════════
+     GUIDE / INSTRUCTION MODAL (Storytelling 3D)
+══════════════════════════════════════════════ -->
+<div id="guide-modal" class="modal-overlay hidden guide-modal-root">
+
+  <!-- 3D Background Canvas -->
+  <canvas id="guide-canvas" class="guide-bg-canvas"></canvas>
+
+  <!-- Close -->
+  <button id="close-guide-btn" class="guide-close-btn">
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+      <path d="M18 6L6 18M6 6l12 12"/>
+    </svg>
+  </button>
+
+  <!-- Chapter nav dots (right side) -->
+  <div class="guide-nav-dots">
+    <button class="gnd active" data-ch="0" title="Welcome"></button>
+    <button class="gnd" data-ch="1" title="Notes"></button>
+    <button class="gnd" data-ch="2" title="Links"></button>
+    <button class="gnd" data-ch="3" title="Graph"></button>
+    <button class="gnd" data-ch="4" title="Tags"></button>
+    <button class="gnd" data-ch="5" title="Canvas"></button>
+    <button class="gnd" data-ch="6" title="Shortcuts"></button>
+  </div>
+
+  <!-- Prev / Next arrows -->
+  <button id="guide-prev" class="guide-arrow guide-arrow-up" title="Previous">
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+      <path d="M18 15l-6-6-6 6"/>
+    </svg>
+  </button>
+  <button id="guide-next" class="guide-arrow guide-arrow-down" title="Next">
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+      <path d="M6 9l6 6 6-6"/>
+    </svg>
+  </button>
+
+  <!-- Scrollable chapters -->
+  <div id="guide-scroller" class="guide-scroller">
+
+    <!-- ── CHAPTER 0: WELCOME ── -->
+    <section class="guide-chapter" data-ch="0">
+      <div class="gc-layout">
+        <div class="gc-visual">
+          <div class="gv-welcome">
+            <!-- Central gem -->
+            <div class="gv-gem-wrap">
+              <div class="gv-gem">
+                <svg viewBox="0 0 120 120" fill="none">
+                  <defs>
+                    <linearGradient id="gg1" x1="0" y1="0" x2="120" y2="120" gradientUnits="userSpaceOnUse">
+                      <stop offset="0%" stop-color="#7c3aed"/>
+                      <stop offset="50%" stop-color="#2563eb"/>
+                      <stop offset="100%" stop-color="#06b6d4"/>
+                    </linearGradient>
+                    <linearGradient id="gg2" x1="0" y1="0" x2="120" y2="120" gradientUnits="userSpaceOnUse">
+                      <stop offset="0%" stop-color="#2563eb" stop-opacity="0.5"/>
+                      <stop offset="100%" stop-color="#7c3aed" stop-opacity="0.2"/>
+                    </linearGradient>
+                  </defs>
+                  <path d="M60 8 L105 34 L105 86 L60 112 L15 86 L15 34 Z" stroke="url(#gg1)" stroke-width="2" fill="none"/>
+                  <path d="M60 8 L105 34 L60 60 L15 34 Z" fill="url(#gg2)" stroke="url(#gg1)" stroke-width="1.2"/>
+                  <line x1="15" y1="34" x2="60" y2="60" stroke="url(#gg1)" stroke-width="1" opacity="0.7"/>
+                  <line x1="105" y1="34" x2="60" y2="60" stroke="url(#gg1)" stroke-width="1" opacity="0.7"/>
+                  <line x1="60" y1="60" x2="60" y2="112" stroke="url(#gg1)" stroke-width="1" opacity="0.7"/>
+                  <line x1="15" y1="86" x2="60" y2="60" stroke="url(#gg1)" stroke-width="1" opacity="0.5"/>
+                  <line x1="105" y1="86" x2="60" y2="60" stroke="url(#gg1)" stroke-width="1" opacity="0.5"/>
+                  <circle cx="60" cy="60" r="6" fill="url(#gg1)"/>
+                  <circle cx="60" cy="60" r="12" fill="url(#gg1)" opacity="0.15"/>
+                </svg>
+              </div>
+              <!-- Orbiting particles -->
+              <div class="gv-orbit gv-orbit-1">
+                <div class="gv-orb-dot" style="--c:#7c3aed"></div>
+              </div>
+              <div class="gv-orbit gv-orbit-2">
+                <div class="gv-orb-dot" style="--c:#06b6d4"></div>
+              </div>
+              <div class="gv-orbit gv-orbit-3">
+                <div class="gv-orb-dot" style="--c:#2563eb"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="gc-text">
+          <div class="gc-num">01</div>
+          <h2 class="gc-title">Your Knowledge Universe</h2>
+          <p class="gc-desc">
+            Axiom is a <strong>premium 3D knowledge space</strong> — a local-first note-taking app where ideas become constellations and connections reveal themselves in three dimensions.
+          </p>
+          <p class="gc-desc">
+            Everything lives on <em>your device</em>. No account. No cloud lock-in. Infinite possibility.
+          </p>
+          <div class="gc-pills">
+            <span class="gc-pill">✦ 100% Private</span>
+            <span class="gc-pill">✦ Works Offline</span>
+            <span class="gc-pill">✦ No Sign-up</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ── CHAPTER 1: CREATING NOTES ── -->
+    <section class="guide-chapter" data-ch="1">
+      <div class="gc-layout gc-layout-rev">
+        <div class="gc-visual">
+          <div class="gv-note-demo">
+            <div class="gvnd-card">
+              <div class="gvnd-bar">
+                <span class="gvnd-dot" style="background:#f87171"></span>
+                <span class="gvnd-dot" style="background:#fbbf24"></span>
+                <span class="gvnd-dot" style="background:#34d399"></span>
+              </div>
+              <div class="gvnd-title">My Brilliant Idea</div>
+              <div class="gvnd-content">
+                <span class="gvnd-cursor">|</span>
+                <span class="gvnd-typed"></span>
+              </div>
+              <div class="gvnd-toolbar">
+                <span class="gvnd-tool">B</span>
+                <span class="gvnd-tool"><i>I</i></span>
+                <span class="gvnd-tool">H1</span>
+                <span class="gvnd-tool">[[]]</span>
+                <span class="gvnd-tool">#tag</span>
+              </div>
+            </div>
+            <div class="gvnd-shortcut">
+              <kbd>Ctrl</kbd><span>+</span><kbd>N</kbd>
+              <span class="gvnd-sc-label">New Note</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="gc-text">
+          <div class="gc-num">02</div>
+          <h2 class="gc-title">Capture Every Thought</h2>
+          <p class="gc-desc">
+            Press <kbd class="inline-kbd">Ctrl+N</kbd> or click <strong>+ New Note</strong> to create a note. Write freely in <strong>Markdown</strong> — it's just text that looks beautiful when rendered.
+          </p>
+          <ul class="gc-list">
+            <li><strong>Title bar</strong> — Give your note a name</li>
+            <li><strong>Toolbar</strong> — Bold, italic, headings, code blocks</li>
+            <li><strong>Edit / Preview / Split</strong> — Three writing modes</li>
+            <li><strong>Auto-save</strong> — Changes save automatically</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <!-- ── CHAPTER 2: WIKILINKS ── -->
+    <section class="guide-chapter" data-ch="2">
+      <div class="gc-layout">
+        <div class="gc-visual">
+          <div class="gv-links">
+            <div class="gvl-node gvl-node-a">
+              <div class="gvl-inner">Ideas</div>
+            </div>
+            <div class="gvl-beam-wrap">
+              <div class="gvl-beam"></div>
+              <div class="gvl-beam-pulse"></div>
+              <div class="gvl-beam-label"><code>[[Ideas]]</code></div>
+            </div>
+            <div class="gvl-node gvl-node-b">
+              <div class="gvl-inner">Research</div>
+            </div>
+            <!-- Mini note card showing wikilink syntax -->
+            <div class="gvl-syntax-card">
+              <span class="gvl-dim">According to my </span><span class="gvl-link">[[Research]]</span><span class="gvl-dim">, the idea works.</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="gc-text">
+          <div class="gc-num">03</div>
+          <h2 class="gc-title">Connect Ideas with Links</h2>
+          <p class="gc-desc">
+            Type <kbd class="inline-kbd">[[Note Name]]</kbd> anywhere in a note to create a link to another note. A dropdown autocomplete appears as you type.
+          </p>
+          <ul class="gc-list">
+            <li><strong>Bi-directional</strong> — Backlinks tracked automatically</li>
+            <li><strong>Autocomplete</strong> — Suggestions appear as you type <code>[[</code></li>
+            <li><strong>Backlinks panel</strong> — See every note that links here</li>
+            <li><strong>Click any link</strong> — Instantly navigate to that note</li>
+          </ul>
+          <div class="gc-pills">
+            <span class="gc-pill" style="--pc:#06b6d4">Type [[ to start linking</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ── CHAPTER 3: 3D GRAPH ── -->
+    <section class="guide-chapter" data-ch="3">
+      <div class="gc-layout gc-layout-rev">
+        <div class="gc-visual">
+          <div class="gv-graph">
+            <!-- CSS 3D orbiting nodes -->
+            <div class="gvg-scene">
+              <div class="gvg-center">
+                <div class="gvg-core"></div>
+              </div>
+              <div class="gvg-ring gvg-ring-1">
+                <div class="gvg-sat" style="--ang:0turn;   --c:#7c3aed; --s:14px"></div>
+                <div class="gvg-sat" style="--ang:.25turn; --c:#06b6d4; --s:10px"></div>
+                <div class="gvg-sat" style="--ang:.5turn;  --c:#2563eb; --s:12px"></div>
+                <div class="gvg-sat" style="--ang:.75turn; --c:#db2777; --s:8px"></div>
+              </div>
+              <div class="gvg-ring gvg-ring-2">
+                <div class="gvg-sat" style="--ang:.125turn; --c:#06b6d4; --s:9px"></div>
+                <div class="gvg-sat" style="--ang:.375turn; --c:#7c3aed; --s:11px"></div>
+                <div class="gvg-sat" style="--ang:.625turn; --c:#2563eb; --s:8px"></div>
+              </div>
+              <!-- Connection lines SVG overlay -->
+              <svg class="gvg-lines" viewBox="0 0 300 300">
+                <line x1="150" y1="150" x2="230" y2="80" stroke="#7c3aed" stroke-width="1" opacity="0.4"/>
+                <line x1="150" y1="150" x2="70" y2="80" stroke="#06b6d4" stroke-width="1" opacity="0.4"/>
+                <line x1="150" y1="150" x2="70" y2="220" stroke="#2563eb" stroke-width="1" opacity="0.4"/>
+                <line x1="150" y1="150" x2="230" y2="220" stroke="#db2777" stroke-width="1" opacity="0.4"/>
+              </svg>
+            </div>
+          </div>
+        </div>
+
+        <div class="gc-text">
+          <div class="gc-num">04</div>
+          <h2 class="gc-title">See Your Mind in 3D</h2>
+          <p class="gc-desc">
+            The <strong>Knowledge Graph</strong> shows your notes as glowing spheres in 3D space. Links between notes are glowing beams of light.
+          </p>
+          <ul class="gc-list">
+            <li><strong>Left-drag</strong> — Orbit around your knowledge galaxy</li>
+            <li><strong>Scroll</strong> — Zoom in and out</li>
+            <li><strong>Click a node</strong> — Open that note instantly</li>
+            <li><strong>Hover</strong> — See note title and tags</li>
+            <li><strong>Filter</strong> — Search and isolate specific nodes</li>
+          </ul>
+          <div class="gc-pills">
+            <span class="gc-pill" style="--pc:#7c3aed">● Active note</span>
+            <span class="gc-pill" style="--pc:#06b6d4">● Linked note</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ── CHAPTER 4: TAGS ── -->
+    <section class="guide-chapter" data-ch="4">
+      <div class="gc-layout">
+        <div class="gc-visual">
+          <div class="gv-tags">
+            <div class="gvt-tag" style="--x:50%;  --y:20%; --d:0s;   --c:#7c3aed">#ideas</div>
+            <div class="gvt-tag" style="--x:20%;  --y:45%; --d:0.3s; --c:#06b6d4">#research</div>
+            <div class="gvt-tag" style="--x:75%;  --y:48%; --d:0.6s; --c:#2563eb">#projects</div>
+            <div class="gvt-tag" style="--x:35%;  --y:72%; --d:0.9s; --c:#db2777">#reading</div>
+            <div class="gvt-tag" style="--x:65%;  --y:75%; --d:1.2s; --c:#7c3aed">#notes</div>
+            <div class="gvt-tag" style="--x:15%;  --y:80%; --d:1.5s; --c:#059669">#goals</div>
+            <div class="gvt-tag" style="--x:80%;  --y:22%; --d:1.8s; --c:#06b6d4">#daily</div>
+            <!-- Sidebar tag cloud mockup -->
+            <div class="gvt-sidebar">
+              <div class="gvt-sb-hdr">TAGS</div>
+              <div class="gvt-sb-chips">
+                <span class="gvt-chip">#ideas <em>4</em></span>
+                <span class="gvt-chip">#research <em>2</em></span>
+                <span class="gvt-chip active">#projects <em>3</em></span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="gc-text">
+          <div class="gc-num">05</div>
+          <h2 class="gc-title">Organise with Tags</h2>
+          <p class="gc-desc">
+            Tags let you group notes by topic, project, or any category you define. Filter your entire vault with a single click.
+          </p>
+          <ul class="gc-list">
+            <li>Type <kbd class="inline-kbd">#tagname</kbd> in a note to auto-add the tag</li>
+            <li>Use the <strong>tag input bar</strong> below the title for explicit tags</li>
+            <li>Click a tag in the <strong>sidebar cloud</strong> to filter your notes</li>
+            <li>Tags appear in the <strong>note list</strong> for quick scanning</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <!-- ── CHAPTER 5: CANVAS ── -->
+    <section class="guide-chapter" data-ch="5">
+      <div class="gc-layout gc-layout-rev">
+        <div class="gc-visual">
+          <div class="gv-canvas-demo">
+            <!-- Perspective grid -->
+            <div class="gvcd-grid">
+              <div class="gvcd-card" style="--cx:10%;  --cy:15%; --d:0s">
+                <div class="gvcd-ct">Research Notes</div>
+                <div class="gvcd-cb">Key findings from...</div>
+              </div>
+              <div class="gvcd-card" style="--cx:55%; --cy:8%;  --d:0.25s">
+                <div class="gvcd-ct">Project Plan</div>
+                <div class="gvcd-cb">Phase 1: Research</div>
+              </div>
+              <div class="gvcd-card" style="--cx:25%; --cy:55%; --d:0.5s">
+                <div class="gvcd-ct">Ideas</div>
+                <div class="gvcd-cb">New approach to...</div>
+              </div>
+              <div class="gvcd-card" style="--cx:62%; --cy:52%; --d:0.75s">
+                <div class="gvcd-ct">Reading List</div>
+                <div class="gvcd-cb">— Book A<br>— Book B</div>
+              </div>
+            </div>
+            <!-- Pan hint -->
+            <div class="gvcd-hint">Drag to pan · Scroll to zoom</div>
+          </div>
+        </div>
+
+        <div class="gc-text">
+          <div class="gc-num">06</div>
+          <h2 class="gc-title">Think Spatially on Canvas</h2>
+          <p class="gc-desc">
+            The <strong>Infinite Canvas</strong> is a spatial whiteboard where you can place note cards anywhere, creating visual arrangements of your ideas.
+          </p>
+          <ul class="gc-list">
+            <li>Click <strong>Canvas</strong> in the sidebar to open</li>
+            <li>Select the <strong>Note tool</strong> then click to place a card</li>
+            <li><strong>Drag</strong> cards to reposition them</li>
+            <li><strong>Scroll</strong> to zoom in/out on the canvas</li>
+            <li><strong>Pan</strong> with the Select tool to explore</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <!-- ── CHAPTER 6: SHORTCUTS ── -->
+    <section class="guide-chapter" data-ch="6">
+      <div class="gc-layout gc-full">
+        <div class="gc-text gc-text-centered">
+          <div class="gc-num">07</div>
+          <h2 class="gc-title">Master the Shortcuts</h2>
+          <p class="gc-desc">Become 10× faster with these keyboard shortcuts.</p>
+        </div>
+
+        <div class="gv-shortcuts">
+          <div class="gvs-grid">
+            <div class="gvs-group">
+              <div class="gvs-group-title">General</div>
+              <div class="gvs-row"><div class="gvs-keys"><kbd>Ctrl</kbd>+<kbd>N</kbd></div><span>New Note</span></div>
+              <div class="gvs-row"><div class="gvs-keys"><kbd>Ctrl</kbd>+<kbd>K</kbd></div><span>Search Notes</span></div>
+              <div class="gvs-row"><div class="gvs-keys"><kbd>Ctrl</kbd>+<kbd>S</kbd></div><span>Force Save</span></div>
+              <div class="gvs-row"><div class="gvs-keys"><kbd>Ctrl</kbd>+<kbd>⇧</kbd>+<kbd>F</kbd></div><span>Focus Mode</span></div>
+              <div class="gvs-row"><div class="gvs-keys"><kbd>Esc</kbd></div><span>Close modal / menu</span></div>
+            </div>
+            <div class="gvs-group">
+              <div class="gvs-group-title">Formatting</div>
+              <div class="gvs-row"><div class="gvs-keys"><kbd>Ctrl</kbd>+<kbd>B</kbd></div><span><strong>Bold</strong></span></div>
+              <div class="gvs-row"><div class="gvs-keys"><kbd>Ctrl</kbd>+<kbd>I</kbd></div><span><em>Italic</em></span></div>
+              <div class="gvs-row"><div class="gvs-keys"><kbd>Tab</kbd></div><span>Indent (in editor)</span></div>
+              <div class="gvs-row"><div class="gvs-keys"><kbd>Enter</kbd></div><span>Continue list item</span></div>
+            </div>
+            <div class="gvs-group">
+              <div class="gvs-group-title">Linking</div>
+              <div class="gvs-row"><div class="gvs-keys"><code>[[</code></div><span>Open link autocomplete</span></div>
+              <div class="gvs-row"><div class="gvs-keys"><kbd>↑</kbd><kbd>↓</kbd></div><span>Navigate suggestions</span></div>
+              <div class="gvs-row"><div class="gvs-keys"><kbd>Enter</kbd></div><span>Select suggestion</span></div>
+              <div class="gvs-row"><div class="gvs-keys"><code>#tag</code></div><span>Add a tag inline</span></div>
+            </div>
+            <div class="gvs-group">
+              <div class="gvs-group-title">Graph</div>
+              <div class="gvs-row"><div class="gvs-keys">Drag</div><span>Orbit the graph</span></div>
+              <div class="gvs-row"><div class="gvs-keys">Scroll</div><span>Zoom in / out</span></div>
+              <div class="gvs-row"><div class="gvs-keys">Click node</div><span>Open that note</span></div>
+              <div class="gvs-row"><div class="gvs-keys"><kbd>↑</kbd><kbd>↓</kbd></div><span>Guide chapters</span></div>
+            </div>
+          </div>
+
+          <button id="guide-start-btn" class="guide-cta-btn">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+              <path d="M5 12h14M12 5l7 7-7 7"/>
+            </svg>
+            Start Using Axiom
+            <div class="gcta-shimmer"></div>
+          </button>
+        </div>
+      </div>
+    </section>
+
+  </div><!-- /guide-scroller -->
+</div><!-- /guide-modal -->
 
 <!-- ─── TOAST CONTAINER ─── -->
 <div id="toast-container"></div>

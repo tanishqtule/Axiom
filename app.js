@@ -527,33 +527,24 @@ class EditorManager {
 
   _switchTab(tab) {
     this.currentTab = tab;
-    $('#edit-pane').classList.remove('active-pane');
-    $('#preview-pane').classList.remove('active-pane');
-    $('#split-pane').classList.remove('active-pane');
+    // Use only the active-pane class — no inline style toggling
+    $$('.editor-pane').forEach(p => p.classList.remove('active-pane'));
+    $(`#${tab}-pane`).classList.add('active-pane');
 
-    if (tab === 'edit') {
-      $('#edit-pane').classList.add('active-pane');
-      $('#edit-pane').style.display = 'flex';
-      $('#preview-pane').style.display = 'none';
-      $('#split-pane').style.display = 'none';
-    } else if (tab === 'preview') {
-      $('#edit-pane').style.display = 'none';
-      $('#preview-pane').style.display = 'flex';
-      $('#split-pane').style.display = 'none';
-      $('#preview-pane').classList.add('active-pane');
+    if (tab === 'preview') {
       this._renderPreview();
-    } else {
-      $('#edit-pane').style.display = 'none';
-      $('#preview-pane').style.display = 'none';
-      $('#split-pane').style.display = 'flex';
-      $('#split-pane').classList.add('active-pane');
+    } else if (tab === 'split') {
       const splitEd = $('#split-editor');
       splitEd.value = this.contentEl.value;
-      splitEd.addEventListener('input', () => {
-        this.contentEl.value = splitEd.value;
-        this._onEdit();
-        this._renderSplitPreview();
-      });
+      // Only bind once using a named handler stored on the element
+      if (!splitEd._axiomBound) {
+        splitEd._axiomBound = true;
+        splitEd.addEventListener('input', () => {
+          this.contentEl.value = splitEd.value;
+          this._onEdit();
+          this._renderSplitPreview();
+        });
+      }
       this._renderSplitPreview();
     }
   }
@@ -841,7 +832,8 @@ class EditorManager {
 
     this.titleEl.value   = note.title;
     this.contentEl.value = note.content;
-    if ($('#split-editor')) $('#split-editor').value = note.content;
+    const splitEd = $('#split-editor');
+    if (splitEd) splitEd.value = note.content;
 
     this._renderNoteTags();
     this._updateStats();
@@ -852,10 +844,9 @@ class EditorManager {
     if (this.currentTab === 'preview') this._renderPreview();
     if (this.currentTab === 'split')   this._renderSplitPreview();
 
-    // Show editor, hide welcome
+    // Show editor, hide welcome — class-only approach
     $('#welcome-screen').classList.add('hidden');
     $('#note-editor').classList.remove('hidden');
-    $('#note-editor').style.display = 'flex';
   }
 
   _export() {
@@ -996,9 +987,7 @@ class UIManager {
 
   showWelcome() {
     $('#welcome-screen').classList.remove('hidden');
-    $('#welcome-screen').style.display = '';
     $('#note-editor').classList.add('hidden');
-    $('#note-editor').style.display = 'none';
     this.nm.activeId = null;
     this.renderNoteList();
   }
@@ -1393,6 +1382,10 @@ class App {
       }
     });
 
+    // Guide
+    $('#guide-btn')?.addEventListener('click', () => window.guideManager?.open());
+    $('#welcome-guide-btn')?.addEventListener('click', () => window.guideManager?.open());
+
     // Graph controls
     $('#g-zoom-in').addEventListener('click',  () => window.graphManager?.zoom(1.3));
     $('#g-zoom-out').addEventListener('click', () => window.graphManager?.zoom(0.77));
@@ -1465,8 +1458,99 @@ class App {
   }
 }
 
+/* ════════════════════════════════════════════════════════
+   GUIDE MANAGER
+════════════════════════════════════════════════════════ */
+class GuideManager {
+  constructor() {
+    this.currentChapter = 0;
+    this.totalChapters  = 7;
+    this.isOpen         = false;
+    this._bind();
+  }
+
+  open() {
+    this.isOpen = true;
+    const modal = $('#guide-modal');
+    modal.classList.remove('hidden');
+    this.goTo(0);
+    window.guideAnim?.start();
+    // Trigger intersection observer re-check
+    setTimeout(() => this._observeChapters(), 100);
+  }
+
+  close() {
+    this.isOpen = false;
+    $('#guide-modal').classList.add('hidden');
+    window.guideAnim?.stop();
+  }
+
+  goTo(idx) {
+    idx = Math.max(0, Math.min(this.totalChapters - 1, idx));
+    this.currentChapter = idx;
+    const scroller = $('#guide-scroller');
+    const chapters  = $$('.guide-chapter', scroller);
+    if (chapters[idx]) {
+      chapters[idx].scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+    this._updateDots(idx);
+    window.guideAnim?.onChapter(idx);
+  }
+
+  _updateDots(idx) {
+    $$('.gnd').forEach((d, i) => d.classList.toggle('active', i === idx));
+  }
+
+  _observeChapters() {
+    const obs = new IntersectionObserver((entries) => {
+      entries.forEach(entry => {
+        if (entry.isIntersecting) {
+          entry.target.classList.add('visible');
+          const idx = parseInt(entry.target.dataset.ch);
+          if (!isNaN(idx)) {
+            this.currentChapter = idx;
+            this._updateDots(idx);
+            window.guideAnim?.onChapter(idx);
+          }
+        }
+      });
+    }, { threshold: 0.5, root: $('#guide-scroller') });
+
+    $$('.guide-chapter').forEach(ch => obs.observe(ch));
+    this._obs = obs;
+  }
+
+  _bind() {
+    $('#close-guide-btn')?.addEventListener('click', () => this.close());
+    $('#guide-modal')?.addEventListener('click', e => {
+      if (e.target === $('#guide-modal')) this.close();
+    });
+
+    // Nav dots
+    $$('.gnd').forEach((d, i) => {
+      d.addEventListener('click', () => this.goTo(i));
+    });
+
+    // Arrow buttons
+    $('#guide-prev')?.addEventListener('click', () => this.goTo(this.currentChapter - 1));
+    $('#guide-next')?.addEventListener('click', () => this.goTo(this.currentChapter + 1));
+
+    // Keyboard
+    document.addEventListener('keydown', e => {
+      if (!this.isOpen) return;
+      if (e.key === 'ArrowDown' || e.key === 'ArrowRight') this.goTo(this.currentChapter + 1);
+      if (e.key === 'ArrowUp'   || e.key === 'ArrowLeft')  this.goTo(this.currentChapter - 1);
+      if (e.key === 'Escape') this.close();
+    });
+
+    // "Start using Axiom" button inside guide
+    $('#guide-start-btn')?.addEventListener('click', () => this.close());
+  }
+}
+
 /* ─── Boot ─── */
 document.addEventListener('DOMContentLoaded', () => {
   initCursorGlow();
   window.axiomApp = new App();
+  window.guideManager = new GuideManager();
 });

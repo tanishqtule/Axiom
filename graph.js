@@ -754,6 +754,180 @@ class Graph3D {
 }
 
 /* ════════════════════════════════════════════════════════
+   GUIDE BACKGROUND ANIMATION
+════════════════════════════════════════════════════════ */
+class GuideAnimation {
+  constructor() {
+    this.canvas   = document.getElementById('guide-canvas');
+    this.running  = false;
+    this.chapter  = 0;
+    this.time     = 0;
+
+    // Chapter accent colours
+    this.chapterColors = [
+      [0x7c3aed, 0x06b6d4],  // 0 Welcome
+      [0x2563eb, 0x7c3aed],  // 1 Notes
+      [0x06b6d4, 0x2563eb],  // 2 Links
+      [0x7c3aed, 0x2563eb],  // 3 Graph
+      [0xdb2777, 0x7c3aed],  // 4 Tags
+      [0x059669, 0x06b6d4],  // 5 Canvas
+      [0x2563eb, 0x7c3aed],  // 6 Shortcuts
+    ];
+
+    if (typeof THREE === 'undefined' || !this.canvas) return;
+    this._setup();
+    this._buildScene();
+  }
+
+  _setup() {
+    const w = window.innerWidth, h = window.innerHeight;
+    this.scene  = new THREE.Scene();
+    this.camera = new THREE.PerspectiveCamera(70, w / h, 0.1, 2000);
+    this.camera.position.set(0, 0, 200);
+
+    this.renderer = new THREE.WebGLRenderer({ canvas: this.canvas, antialias: true, alpha: true });
+    this.renderer.setSize(w, h);
+    this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    this.renderer.setClearColor(0x000000, 0);
+
+    window.addEventListener('resize', () => {
+      const w = window.innerWidth, h = window.innerHeight;
+      this.camera.aspect = w / h;
+      this.camera.updateProjectionMatrix();
+      this.renderer.setSize(w, h);
+    });
+  }
+
+  _buildScene() {
+    // Large nebula particle cloud
+    const count = 1200;
+    const geo   = new THREE.BufferGeometry();
+    const pos   = new Float32Array(count * 3);
+    const col   = new Float32Array(count * 3);
+
+    for (let i = 0; i < count; i++) {
+      // Sphere distribution
+      const r = 100 + Math.random() * 300;
+      const t = Math.random() * Math.PI * 2;
+      const p = Math.acos(2 * Math.random() - 1);
+      pos[i*3]   = r * Math.sin(p) * Math.cos(t);
+      pos[i*3+1] = r * Math.sin(p) * Math.sin(t);
+      pos[i*3+2] = r * Math.cos(p);
+
+      // Purple-cyan gradient colour
+      const mix = Math.random();
+      col[i*3]   = 0.48 * (1 - mix) + 0.02 * mix;  // R
+      col[i*3+1] = 0.23 * (1 - mix) + 0.71 * mix;  // G
+      col[i*3+2] = 0.93 * (1 - mix) + 0.83 * mix;  // B
+    }
+
+    geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+    geo.setAttribute('color',    new THREE.BufferAttribute(col, 3));
+
+    this.particles = new THREE.Points(geo, new THREE.PointsMaterial({
+      size: 1.2,
+      transparent: true,
+      opacity: 0.45,
+      vertexColors: true,
+      sizeAttenuation: true
+    }));
+    this.scene.add(this.particles);
+
+    // A few larger glowing orbs
+    const orbColors = [0x7c3aed, 0x06b6d4, 0x2563eb, 0xdb2777];
+    this.orbs = orbColors.map((c, i) => {
+      const mesh = new THREE.Mesh(
+        new THREE.SphereGeometry(4 + i, 16, 16),
+        new THREE.MeshBasicMaterial({ color: c, transparent: true, opacity: 0.7 })
+      );
+      mesh.position.set(
+        Math.cos(i * Math.PI / 2) * 60,
+        Math.sin(i * 1.3) * 40,
+        Math.sin(i * Math.PI / 2) * 60
+      );
+      this.scene.add(mesh);
+      return mesh;
+    });
+  }
+
+  onChapter(idx) {
+    this.chapter = idx;
+    // Tint particles toward chapter colour
+    const [c1] = this.chapterColors[idx] || [0x7c3aed, 0x06b6d4];
+    if (this.particles) {
+      const r = ((c1 >> 16) & 0xff) / 255;
+      const g = ((c1 >>  8) & 0xff) / 255;
+      const b = (c1        & 0xff) / 255;
+      this.particles.material.color.setRGB(r, g, b);
+    }
+  }
+
+  start() {
+    this.running = true;
+    this._loop();
+  }
+
+  stop() {
+    this.running = false;
+  }
+
+  _loop() {
+    if (!this.running) return;
+    requestAnimationFrame(() => this._loop());
+    this.time += 0.005;
+
+    // Slow rotation
+    if (this.particles) {
+      this.particles.rotation.y = this.time * 0.04;
+      this.particles.rotation.x = Math.sin(this.time * 0.02) * 0.1;
+    }
+
+    // Orbs drift
+    this.orbs?.forEach((orb, i) => {
+      orb.position.x = Math.cos(this.time * 0.3 + i * Math.PI / 2) * 60;
+      orb.position.y = Math.sin(this.time * 0.2 + i * 1.3) * 40;
+      orb.position.z = Math.sin(this.time * 0.3 + i * Math.PI / 2) * 60;
+      orb.material.opacity = 0.4 + Math.sin(this.time * 1.5 + i) * 0.25;
+    });
+
+    // Camera slow drift
+    this.camera.position.x = Math.sin(this.time * 0.05) * 15;
+    this.camera.position.y = Math.cos(this.time * 0.04) * 8;
+    this.camera.lookAt(0, 0, 0);
+
+    this.renderer.render(this.scene, this.camera);
+  }
+}
+
+/* ─── Typewriter for Ch1 note demo ─── */
+function initGuideTypewriter() {
+  const el = document.querySelector('.gvnd-typed');
+  if (!el) return;
+  const phrases = [
+    'Connecting ideas creates...',
+    'Every note is a neuron in...',
+    'The best ideas emerge from...',
+    'Knowledge grows when linked...',
+  ];
+  let pi = 0, ci = 0, deleting = false;
+
+  const tick = () => {
+    const phrase = phrases[pi];
+    if (!deleting) {
+      el.textContent = phrase.slice(0, ci + 1);
+      ci++;
+      if (ci === phrase.length) { deleting = true; setTimeout(tick, 1800); return; }
+    } else {
+      el.textContent = phrase.slice(0, ci - 1);
+      ci--;
+      if (ci === 0) { deleting = false; pi = (pi + 1) % phrases.length; }
+    }
+    setTimeout(tick, deleting ? 40 : 70);
+  };
+  tick();
+}
+
+/* ════════════════════════════════════════════════════════
    BOOT
 ════════════════════════════════════════════════════════ */
 document.addEventListener('DOMContentLoaded', () => {
@@ -765,11 +939,13 @@ document.addEventListener('DOMContentLoaded', () => {
   // Start splash animation immediately
   window.splashAnim = new SplashAnimation();
 
+  // Guide animation (lazy — only starts when guide opens)
+  window.guideAnim = new GuideAnimation();
+
   // Graph manager (initialized after splash)
   window.graphManager = new Graph3D();
 
-  // When enter button clicked, graph.init() is called from app.js
-  // Proxy the init to also dispose splash
+  // Proxy init to dispose splash and seed graph
   const originalInit = window.graphManager.init.bind(window.graphManager);
   window.graphManager.init = function () {
     originalInit();
@@ -779,20 +955,33 @@ document.addEventListener('DOMContentLoaded', () => {
     }, 900);
   };
 
-  // Handle window resize for graph modal
+  // Handle window resize
   window.addEventListener('resize', () => {
     const canvas = document.getElementById('graph-canvas');
     if (canvas) window.graphManager?._onResize(canvas);
 
     const miniCanvas = document.getElementById('mini-graph-canvas');
     if (miniCanvas && window.graphManager?.miniRenderer) {
-      const w = miniCanvas.clientWidth;
-      const h = miniCanvas.clientHeight;
-      window.graphManager.miniCamera.aspect = w / h;
-      window.graphManager.miniCamera.updateProjectionMatrix();
+      const w = miniCanvas.clientWidth || 260;
+      const h = miniCanvas.clientHeight || 160;
+      if (window.graphManager.miniCamera) {
+        window.graphManager.miniCamera.aspect = w / h;
+        window.graphManager.miniCamera.updateProjectionMatrix();
+      }
       window.graphManager.miniRenderer.setSize(w, h);
     }
 
     window.splashAnim?._resize();
   });
+
+  // Start typewriter when guide opens (observed by MutationObserver)
+  const obs = new MutationObserver(() => {
+    const modal = document.getElementById('guide-modal');
+    if (modal && !modal.classList.contains('hidden')) {
+      setTimeout(initGuideTypewriter, 400);
+      obs.disconnect();
+    }
+  });
+  const gm = document.getElementById('guide-modal');
+  if (gm) obs.observe(gm, { attributes: true, attributeFilter: ['class'] });
 });
