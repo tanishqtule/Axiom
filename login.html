@@ -1,0 +1,545 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Axiom — Sign In</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=Inter:wght@300;400;500&display=swap" rel="stylesheet" />
+
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:       #04040d;
+      --card-bg:  rgba(8, 8, 24, 0.72);
+      --border:   rgba(255,255,255,0.07);
+      --accent1:  #7c3aed;
+      --accent2:  #2563eb;
+      --accent3:  #06b6d4;
+      --text:     #f1f5f9;
+      --text-muted: rgba(241,245,249,0.5);
+    }
+
+    html, body {
+      width: 100%; height: 100%;
+      background: var(--bg);
+      font-family: 'Space Grotesk', sans-serif;
+      color: var(--text);
+      overflow: hidden;
+    }
+
+    /* ── Canvas ── */
+    #login-canvas {
+      position: fixed;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      z-index: 0;
+    }
+
+    /* ── Overlay gradient so card is readable ── */
+    .login-overlay {
+      position: fixed;
+      inset: 0;
+      z-index: 1;
+      background: radial-gradient(
+        ellipse 60% 60% at 50% 50%,
+        transparent 0%,
+        rgba(4,4,13,0.55) 60%,
+        rgba(4,4,13,0.85) 100%
+      );
+      pointer-events: none;
+    }
+
+    /* ── Card container ── */
+    .login-stage {
+      position: fixed;
+      inset: 0;
+      z-index: 2;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    /* ── Glass card ── */
+    .login-card {
+      width: 420px;
+      max-width: calc(100vw - 32px);
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 24px;
+      padding: 48px 40px 40px;
+      backdrop-filter: blur(24px) saturate(1.4);
+      -webkit-backdrop-filter: blur(24px) saturate(1.4);
+      box-shadow:
+        0 0 0 1px rgba(124,58,237,0.08),
+        0 24px 80px rgba(0,0,0,0.6),
+        0 0 80px rgba(124,58,237,0.06) inset;
+      text-align: center;
+
+      /* Entrance animation */
+      opacity: 0;
+      transform: translateY(28px) scale(0.97);
+      animation: cardEnter 0.7s cubic-bezier(0.22,1,0.36,1) 0.4s forwards;
+    }
+
+    @keyframes cardEnter {
+      to { opacity: 1; transform: translateY(0) scale(1); }
+    }
+
+    /* ── Logo area ── */
+    .login-logo-wrap {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 14px;
+      margin-bottom: 32px;
+    }
+
+    .login-gem {
+      width: 64px;
+      height: 64px;
+      filter: drop-shadow(0 0 18px rgba(124,58,237,0.7))
+              drop-shadow(0 0 40px rgba(6,182,212,0.3));
+      animation: gemPulse 3s ease-in-out infinite;
+    }
+
+    @keyframes gemPulse {
+      0%, 100% { filter: drop-shadow(0 0 18px rgba(124,58,237,0.7)) drop-shadow(0 0 40px rgba(6,182,212,0.3)); }
+      50%       { filter: drop-shadow(0 0 30px rgba(124,58,237,0.9)) drop-shadow(0 0 60px rgba(6,182,212,0.5)); }
+    }
+
+    .login-brand {
+      font-size: 2rem;
+      font-weight: 700;
+      background: linear-gradient(135deg, #c4b5fd 0%, #93c5fd 50%, #67e8f9 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      letter-spacing: -0.02em;
+      line-height: 1;
+    }
+
+    /* ── Heading ── */
+    .login-heading {
+      font-size: 1.25rem;
+      font-weight: 600;
+      color: var(--text);
+      margin-bottom: 8px;
+    }
+
+    .login-sub {
+      font-size: 0.9rem;
+      color: var(--text-muted);
+      line-height: 1.5;
+      margin-bottom: 36px;
+      font-family: 'Inter', sans-serif;
+    }
+
+    /* ── Divider ── */
+    .login-divider {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 28px;
+    }
+
+    .login-divider::before,
+    .login-divider::after {
+      content: '';
+      flex: 1;
+      height: 1px;
+      background: var(--border);
+    }
+
+    .login-divider span {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      white-space: nowrap;
+      font-family: 'Inter', sans-serif;
+    }
+
+    /* ── Google button ── */
+    .google-btn {
+      width: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 12px;
+      padding: 14px 24px;
+      background: rgba(255,255,255,0.95);
+      color: #1f1f1f;
+      border: none;
+      border-radius: 12px;
+      font-family: 'Inter', sans-serif;
+      font-size: 0.95rem;
+      font-weight: 500;
+      cursor: pointer;
+      transition: background 0.2s, transform 0.15s, box-shadow 0.2s;
+      box-shadow: 0 2px 12px rgba(0,0,0,0.3);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .google-btn:hover {
+      background: #fff;
+      transform: translateY(-2px);
+      box-shadow: 0 8px 24px rgba(0,0,0,0.4), 0 0 0 1px rgba(255,255,255,0.1);
+    }
+
+    .google-btn:active {
+      transform: translateY(0);
+    }
+
+    .google-btn:disabled {
+      cursor: not-allowed;
+      opacity: 0.7;
+      transform: none;
+    }
+
+    .google-btn .btn-shimmer {
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(105deg, transparent 40%, rgba(255,255,255,0.3) 50%, transparent 60%);
+      transform: translateX(-100%);
+      transition: transform 0s;
+    }
+
+    .google-btn:hover .btn-shimmer {
+      transform: translateX(100%);
+      transition: transform 0.5s ease;
+    }
+
+    .google-logo {
+      width: 20px;
+      height: 20px;
+      flex-shrink: 0;
+    }
+
+    /* ── Loading spinner ── */
+    .btn-spinner {
+      width: 18px;
+      height: 18px;
+      border: 2px solid rgba(31,31,31,0.3);
+      border-top-color: #1f1f1f;
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+      display: none;
+    }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .google-btn.loading .google-logo { display: none; }
+    .google-btn.loading .btn-spinner { display: block; }
+    .google-btn.loading .btn-text::after { content: '…'; }
+
+    /* ── Error message ── */
+    .login-error {
+      margin-top: 16px;
+      padding: 10px 16px;
+      background: rgba(239,68,68,0.12);
+      border: 1px solid rgba(239,68,68,0.25);
+      border-radius: 8px;
+      color: #fca5a5;
+      font-size: 0.82rem;
+      font-family: 'Inter', sans-serif;
+      line-height: 1.45;
+      display: none;
+    }
+
+    .login-error.visible { display: block; }
+
+    /* ── Footer ── */
+    .login-footer {
+      margin-top: 28px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 12px;
+    }
+
+    .login-footer-dot {
+      width: 3px;
+      height: 3px;
+      border-radius: 50%;
+      background: var(--text-muted);
+      opacity: 0.4;
+    }
+
+    .login-footer span {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      font-family: 'Inter', sans-serif;
+      opacity: 0.6;
+    }
+
+    /* ── Stars (extra decorative elements) ── */
+    .star-field {
+      position: fixed;
+      inset: 0;
+      z-index: 0;
+      pointer-events: none;
+    }
+  </style>
+</head>
+<body>
+
+<canvas id="login-canvas"></canvas>
+<div class="login-overlay"></div>
+
+<div class="login-stage">
+  <div class="login-card" id="login-card">
+
+    <!-- Logo -->
+    <div class="login-logo-wrap">
+      <svg class="login-gem" viewBox="0 0 80 80" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <linearGradient id="llg1" x1="0" y1="0" x2="80" y2="80" gradientUnits="userSpaceOnUse">
+            <stop offset="0%" stop-color="#7c3aed"/>
+            <stop offset="50%" stop-color="#2563eb"/>
+            <stop offset="100%" stop-color="#06b6d4"/>
+          </linearGradient>
+          <linearGradient id="llg2" x1="0" y1="40" x2="80" y2="80" gradientUnits="userSpaceOnUse">
+            <stop offset="0%" stop-color="#2563eb" stop-opacity="0.6"/>
+            <stop offset="100%" stop-color="#7c3aed" stop-opacity="0.3"/>
+          </linearGradient>
+        </defs>
+        <path d="M40 6 L70 23 L70 57 L40 74 L10 57 L10 23 Z" stroke="url(#llg1)" stroke-width="1.5" fill="none"/>
+        <path d="M40 6 L70 23 L40 40 L10 23 Z" fill="url(#llg2)" stroke="url(#llg1)" stroke-width="1"/>
+        <line x1="10" y1="23" x2="40" y2="40" stroke="url(#llg1)" stroke-width="0.8" opacity="0.7"/>
+        <line x1="70" y1="23" x2="40" y2="40" stroke="url(#llg1)" stroke-width="0.8" opacity="0.7"/>
+        <line x1="40" y1="40" x2="40" y2="74" stroke="url(#llg1)" stroke-width="0.8" opacity="0.7"/>
+        <circle cx="40" cy="40" r="4" fill="url(#llg1)"/>
+        <circle cx="40" cy="40" r="7" fill="url(#llg1)" opacity="0.2"/>
+      </svg>
+      <div class="login-brand">Axiom</div>
+    </div>
+
+    <h1 class="login-heading">Welcome back</h1>
+    <p class="login-sub">Sign in to access your knowledge universe.<br>Your notes are waiting.</p>
+
+    <div class="login-divider"><span>continue with</span></div>
+
+    <!-- Google OAuth button -->
+    <button class="google-btn" id="google-btn" type="button">
+      <!-- Google logo SVG -->
+      <svg class="google-logo" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+        <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
+        <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
+        <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/>
+        <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/>
+      </svg>
+      <div class="btn-spinner"></div>
+      <span class="btn-text">Sign in with Google</span>
+      <div class="btn-shimmer"></div>
+    </button>
+
+    <div class="login-error" id="login-error"></div>
+
+    <div class="login-footer">
+      <span>Private</span>
+      <div class="login-footer-dot"></div>
+      <span>Secure</span>
+      <div class="login-footer-dot"></div>
+      <span>Yours</span>
+    </div>
+
+  </div>
+</div>
+
+<!-- Scripts (order matters) -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="supabase-config.js"></script>
+
+<script>
+/* ────────────────────────────────────────────────────────
+   THREE.JS GALAXY BACKGROUND
+──────────────────────────────────────────────────────── */
+(function () {
+  const canvas   = document.getElementById('login-canvas');
+  const renderer = new THREE.WebGLRenderer({ canvas, antialias: false, alpha: false });
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5));
+  renderer.setClearColor(0x04040d);
+
+  const scene  = new THREE.Scene();
+  const camera = new THREE.PerspectiveCamera(60, 1, 0.1, 200);
+  camera.position.set(0, 14, 28);
+  camera.lookAt(0, 0, 0);
+
+  /* ── Galaxy particles ── */
+  const COUNT   = 7000;
+  const RADIUS  = 18;
+  const ARMS    = 3;
+  const SPIN    = 1.2;
+  const SPREAD  = 0.28;
+  const POWER   = 2.5;
+
+  const positions = new Float32Array(COUNT * 3);
+  const colors    = new Float32Array(COUNT * 3);
+
+  const cInner  = new THREE.Color('#c4b5fd'); // violet
+  const cMid    = new THREE.Color('#60a5fa'); // blue
+  const cOuter  = new THREE.Color('#22d3ee'); // cyan
+
+  for (let i = 0; i < COUNT; i++) {
+    const i3   = i * 3;
+    const r    = Math.random() * RADIUS;
+    const arm  = (i % ARMS) / ARMS * Math.PI * 2;
+    const twist = r * SPIN;
+
+    const rx = Math.pow(Math.random(), POWER) * (Math.random() < .5 ? 1 : -1) * SPREAD * r;
+    const ry = Math.pow(Math.random(), POWER) * (Math.random() < .5 ? 1 : -1) * SPREAD * r * 0.25;
+    const rz = Math.pow(Math.random(), POWER) * (Math.random() < .5 ? 1 : -1) * SPREAD * r;
+
+    positions[i3]     = Math.cos(arm + twist) * r + rx;
+    positions[i3 + 1] = ry;
+    positions[i3 + 2] = Math.sin(arm + twist) * r + rz;
+
+    const t = r / RADIUS;
+    let col;
+    if (t < 0.3)      col = cInner.clone().lerp(cMid, t / 0.3);
+    else if (t < 0.7) col = cMid.clone().lerp(cOuter, (t - 0.3) / 0.4);
+    else              col = cOuter.clone();
+
+    // Vary brightness
+    const bright = 0.5 + Math.random() * 0.5;
+    colors[i3]     = col.r * bright;
+    colors[i3 + 1] = col.g * bright;
+    colors[i3 + 2] = col.b * bright;
+  }
+
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+  geo.setAttribute('color',    new THREE.BufferAttribute(colors, 3));
+
+  const mat = new THREE.PointsMaterial({
+    size: 0.12,
+    vertexColors: true,
+    blending: THREE.AdditiveBlending,
+    depthWrite: false,
+    transparent: true,
+    opacity: 0.85
+  });
+
+  const galaxy = new THREE.Points(geo, mat);
+  scene.add(galaxy);
+
+  /* ── Core glow (large semi-transparent sphere) ── */
+  const coreGeo = new THREE.SphereGeometry(1.8, 16, 16);
+  const coreMat = new THREE.MeshBasicMaterial({
+    color: 0xc4b5fd,
+    transparent: true,
+    opacity: 0.06,
+    blending: THREE.AdditiveBlending
+  });
+  scene.add(new THREE.Mesh(coreGeo, coreMat));
+
+  /* ── Mouse parallax ── */
+  let mx = 0, my = 0;
+  document.addEventListener('mousemove', e => {
+    mx = (e.clientX / window.innerWidth  - 0.5) * 2;
+    my = (e.clientY / window.innerHeight - 0.5) * 2;
+  });
+
+  /* ── Resize ── */
+  function resize() {
+    const w = window.innerWidth, h = window.innerHeight;
+    renderer.setSize(w, h);
+    camera.aspect = w / h;
+    camera.updateProjectionMatrix();
+  }
+  resize();
+  window.addEventListener('resize', resize);
+
+  /* ── Render loop ── */
+  let t = 0;
+  function loop() {
+    requestAnimationFrame(loop);
+    t += 0.0008;
+    galaxy.rotation.y = t;
+
+    // Subtle mouse parallax tilt
+    camera.position.x += (mx * 3 - camera.position.x) * 0.02;
+    camera.position.y += (14 - my * 2 - camera.position.y) * 0.02;
+    camera.lookAt(0, 0, 0);
+
+    renderer.render(scene, camera);
+  }
+  loop();
+})();
+
+/* ────────────────────────────────────────────────────────
+   AUTH LOGIC
+──────────────────────────────────────────────────────── */
+(async function () {
+  const sb       = window.axiomSupabase;
+  const cfg      = window.AXIOM_CONFIG;
+  const btn      = document.getElementById('google-btn');
+  const errEl    = document.getElementById('login-error');
+
+  function showError(msg) {
+    errEl.textContent = msg;
+    errEl.classList.add('visible');
+  }
+
+  function setLoading(on) {
+    btn.disabled = on;
+    btn.classList.toggle('loading', on);
+  }
+
+  // If Supabase isn't configured, skip to main app (offline mode)
+  if (!sb || !cfg?.isConfigured) {
+    window.location.replace(cfg?.mainPage || 'index.html');
+    return;
+  }
+
+  // If already logged in, go straight to the app
+  try {
+    const { data: { session } } = await sb.auth.getSession();
+    if (session) {
+      window.location.replace(cfg.mainPage || 'index.html');
+      return;
+    }
+  } catch (e) {
+    console.warn('Session check error:', e.message);
+  }
+
+  // Google sign-in
+  btn.addEventListener('click', async () => {
+    setLoading(true);
+    errEl.classList.remove('visible');
+
+    try {
+      const redirectTo = window.location.href
+        .replace('login.html', cfg.mainPage || 'index.html');
+
+      const { error } = await sb.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+          redirectTo,
+          queryParams: { access_type: 'offline', prompt: 'consent' }
+        }
+      });
+
+      if (error) throw error;
+      // Browser will redirect — loading state stays visible
+
+    } catch (e) {
+      setLoading(false);
+      showError(e.message || 'Sign-in failed. Please try again.');
+    }
+  });
+
+  // Listen for auth state changes (handles OAuth redirect callback)
+  sb.auth.onAuthStateChange((event, session) => {
+    if (event === 'SIGNED_IN' && session) {
+      window.location.replace(cfg.mainPage || 'index.html');
+    }
+  });
+})();
+</script>
+
+</body>
+</html>

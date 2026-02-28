@@ -26,36 +26,118 @@ function fmtFullDate(ts) {
 }
 
 /* ════════════════════════════════════════════════════════
-   STORAGE MANAGER
+   SUPABASE STORAGE MANAGER
+   Cloud-first, localStorage as local cache / offline fallback
 ════════════════════════════════════════════════════════ */
-class StorageManager {
-  constructor(key = 'axiom_vault') {
-    this.key = key;
-    this.settingsKey = 'axiom_settings';
+class SupabaseManager {
+  constructor() {
+    this.client  = window.axiomSupabase || null;
+    this.userId  = null;
+    this.user    = null;
+    this._lsKey  = 'axiom_vault';
+    this._setKey = 'axiom_settings';
+    this._bulkTimer = null;
   }
 
-  load() {
+  /* ── DB row ↔ app note conversions ── */
+  _fromDB(row) {
+    return {
+      id:         row.id,
+      title:      row.title      || '',
+      content:    row.content    || '',
+      tags:       row.tags       || [],
+      created:    new Date(row.created_at).getTime(),
+      modified:   new Date(row.updated_at).getTime(),
+      isFavorite: row.is_favorite || false
+    };
+  }
+
+  _toDB(note) {
+    return {
+      id:         note.id,
+      user_id:    this.userId,
+      title:      note.title,
+      content:    note.content,
+      tags:       note.tags,
+      is_favorite: note.isFavorite,
+      created_at: new Date(note.created).toISOString(),
+      updated_at: new Date(note.modified).toISOString()
+    };
+  }
+
+  /* ── Load all notes (async, called once at boot) ── */
+  async load() {
+    if (this.client && this.userId) {
+      try {
+        const { data, error } = await this.client
+          .from('notes')
+          .select('*')
+          .order('updated_at', { ascending: false });
+        if (error) throw error;
+        const notes = (data || []).map(r => this._fromDB(r));
+        // Cache locally
+        localStorage.setItem(this._lsKey, JSON.stringify(notes));
+        return notes;
+      } catch (e) {
+        console.warn('[Axiom] Supabase load failed, using local cache:', e.message);
+      }
+    }
+    // Offline / unconfigured fallback
+    try { return JSON.parse(localStorage.getItem(this._lsKey) || '[]'); } catch { return []; }
+  }
+
+  /* ── Sync individual note to cloud (fire-and-forget) ── */
+  async upsertNote(note) {
+    if (!this.client || !this.userId) return;
     try {
-      return JSON.parse(localStorage.getItem(this.key) || '[]');
-    } catch { return []; }
+      const { error } = await this.client.from('notes').upsert(this._toDB(note));
+      if (error) console.warn('[Axiom] upsert error:', error.message);
+    } catch (e) { console.warn('[Axiom] upsert error:', e.message); }
   }
 
+  /* ── Delete a single note from cloud ── */
+  async deleteNote(id) {
+    if (!this.client || !this.userId) return;
+    try {
+      const { error } = await this.client.from('notes').delete().eq('id', id);
+      if (error) console.warn('[Axiom] delete error:', error.message);
+    } catch (e) { console.warn('[Axiom] delete error:', e.message); }
+  }
+
+  /* ── Bulk save — keeps localStorage in sync; debounces cloud sync ── */
   save(notes) {
-    localStorage.setItem(this.key, JSON.stringify(notes));
+    localStorage.setItem(this._lsKey, JSON.stringify(notes));
+    // Debounced bulk upsert (covers _createSampleNotes and import)
+    clearTimeout(this._bulkTimer);
+    this._bulkTimer = setTimeout(() => this._bulkSync(notes), 4000);
   }
 
-  loadSettings() {
+  async _bulkSync(notes) {
+    if (!this.client || !this.userId) return;
     try {
-      return JSON.parse(localStorage.getItem(this.settingsKey) || '{}');
-    } catch { return {}; }
+      const rows = notes.map(n => this._toDB(n));
+      const { error } = await this.client.from('notes').upsert(rows);
+      if (error) console.warn('[Axiom] bulk sync error:', error.message);
+    } catch (e) { console.warn('[Axiom] bulk sync error:', e.message); }
   }
 
-  saveSettings(settings) {
-    localStorage.setItem(this.settingsKey, JSON.stringify(settings));
+  /* ── Settings (localStorage only, fast) ── */
+  loadSettings() {
+    try { return JSON.parse(localStorage.getItem(this._setKey) || '{}'); } catch { return {}; }
   }
 
+  saveSettings(s) {
+    localStorage.setItem(this._setKey, JSON.stringify(s));
+  }
+
+  /* ── Clear vault ── */
   clear() {
-    localStorage.removeItem(this.key);
+    localStorage.removeItem(this._lsKey);
+    if (this.client && this.userId) {
+      // Best-effort cloud delete
+      this.client.from('notes').delete().eq('user_id', this.userId)
+        .then(({ error }) => { if (error) console.warn('[Axiom] clear error:', error.message); });
+    }
   }
 }
 
@@ -63,9 +145,9 @@ class StorageManager {
    NOTE MANAGER
 ════════════════════════════════════════════════════════ */
 class NoteManager {
-  constructor(storage) {
+  constructor(storage, preloaded = null) {
     this.storage = storage;
-    this.notes = this.storage.load();
+    this.notes = preloaded || [];
     this.activeId = null;
     this.filterTag = null;
     this.searchQuery = '';
@@ -245,6 +327,7 @@ const linked = notes.filter(n =>
     };
     this.notes.unshift(note);
     this.storage.save(this.notes);
+    this.storage.upsertNote?.(note);
     this.activeId = note.id;
     this.onNotesChange?.();
     return note;
@@ -255,9 +338,11 @@ const linked = notes.filter(n =>
     if (!note) return;
     Object.assign(note, patch, { modified: Date.now() });
     this.storage.save(this.notes);
+    this.storage.upsertNote?.(note);
   }
 
   delete(id) {
+    this.storage.deleteNote?.(id);
     this.notes = this.notes.filter(n => n.id !== id);
     if (this.activeId === id) this.activeId = null;
     this.storage.save(this.notes);
@@ -277,6 +362,7 @@ const linked = notes.filter(n =>
     const idx = this.notes.findIndex(n => n.id === id);
     this.notes.splice(idx + 1, 0, copy);
     this.storage.save(this.notes);
+    this.storage.upsertNote?.(copy);
     this.onNotesChange?.();
     return copy;
   }
@@ -1273,23 +1359,81 @@ function initCursorGlow() {
 ════════════════════════════════════════════════════════ */
 class App {
   constructor() {
-    this.storage      = new StorageManager();
-    this.noteManager  = new NoteManager(this.storage);
-    this.toast        = new ToastManager();
-    this.uiManager    = new UIManager(this.noteManager, this.toast);
-    this.editorManager = new EditorManager(this.noteManager, this.uiManager, this.toast);
-    this.canvasManager = new CanvasManager();
-    this.settingsManager = new SettingsManager(this.storage, this.noteManager, this.toast);
-
+    this.storage = new SupabaseManager();
+    this.toast   = new ToastManager();
     window.axiomApp = this;
+    this._initAsync();
+  }
+
+  /* ── Async boot: auth check → load notes → _boot() ── */
+  async _initAsync() {
+    let preloaded = null;
+    const sb  = window.axiomSupabase;
+    const cfg = (typeof AXIOM_CONFIG !== 'undefined') ? AXIOM_CONFIG : null;
+
+    if (sb && cfg?.isConfigured) {
+      try {
+        const { data: { session }, error } = await sb.auth.getSession();
+        if (error) throw error;
+        if (!session) {
+          window.location.replace(cfg.loginPage || 'login.html');
+          return;
+        }
+        this.storage.userId = session.user.id;
+        this.storage.user   = session.user;
+        preloaded = await this.storage.load();
+      } catch (e) {
+        console.warn('[Axiom] Auth/load failed, offline mode:', e.message);
+      }
+    }
+
+    this._boot(preloaded);
+  }
+
+  /* ── Fully initialise the app once data is available ── */
+  _boot(preloaded) {
+    this.noteManager     = new NoteManager(this.storage, preloaded);
+    this.uiManager       = new UIManager(this.noteManager, this.toast);
+    this.editorManager   = new EditorManager(this.noteManager, this.uiManager, this.toast);
+    this.canvasManager   = new CanvasManager();
+    this.settingsManager = new SettingsManager(this.storage, this.noteManager, this.toast);
 
     this.noteManager.onNotesChange = () => {
       this.uiManager.renderNoteList();
       this.uiManager.renderTagCloud();
     };
 
+    this._renderUserProfile();
     this._bindGlobal();
     this._bindSplash();
+
+    // Unlock the Enter button (it was disabled while data loaded)
+    const btn  = $('#enter-btn');
+    const span = btn?.querySelector('span');
+    if (btn)  btn.disabled = false;
+    if (span) span.textContent = 'Enter Your Universe';
+    $('#splash-loading')?.classList.add('hidden');
+  }
+
+  /* ── Render signed-in user's avatar + name in sidebar ── */
+  _renderUserProfile() {
+    const user = this.storage.user;
+    const el   = $('#user-profile');
+    if (!user || !el) return;
+
+    const name   = user.user_metadata?.full_name
+                || user.email?.split('@')[0]
+                || 'User';
+    const avatar = user.user_metadata?.avatar_url;
+
+    if (avatar) {
+      el.innerHTML = `<img src="${avatar}" alt="${name}" class="user-avatar" />
+                      <span class="sl-text user-name" title="${user.email}">${name.split(' ')[0]}</span>`;
+    } else {
+      el.innerHTML = `<div class="user-avatar-initials">${name.slice(0, 2).toUpperCase()}</div>
+                      <span class="sl-text user-name" title="${user.email}">${name.split(' ')[0]}</span>`;
+    }
+    el.classList.remove('hidden');
   }
 
   _bindSplash() {
@@ -1385,6 +1529,14 @@ class App {
     // Guide
     $('#guide-btn')?.addEventListener('click', () => window.guideManager?.open());
     $('#welcome-guide-btn')?.addEventListener('click', () => window.guideManager?.open());
+
+    // Sign out
+    $('#signout-btn')?.addEventListener('click', async () => {
+      if (window.axiomSupabase) await window.axiomSupabase.auth.signOut();
+      const loginPage = (typeof AXIOM_CONFIG !== 'undefined')
+        ? AXIOM_CONFIG.loginPage : 'login.html';
+      window.location.replace(loginPage);
+    });
 
     // Graph controls
     $('#g-zoom-in').addEventListener('click',  () => window.graphManager?.zoom(1.3));
