@@ -10,8 +10,8 @@
 ════════════════════════════════════════════════════════ */
 
 const AXIOM_CONFIG = {
-  supabaseUrl:  'YOUR_SUPABASE_URL_HERE',       // e.g. https://abcdef.supabase.co
-  supabaseKey:  'YOUR_SUPABASE_ANON_KEY_HERE',  // eyJhbGci... (long key)
+  supabaseUrl:  'https://hzrddplcieqarxtxzgay.supabase.co',
+  supabaseKey:  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imh6cmRkcGxjaWVxYXJ4dHh6Z2F5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzIzMDg3NTEsImV4cCI6MjA4Nzg4NDc1MX0.fLg3EfMm4KZxYUjqxGe9DQezizjqVIm2kjaj1bd9P00',
   loginPage:    'login.html',
   mainPage:     'index.html',
 
