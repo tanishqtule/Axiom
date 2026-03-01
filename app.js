@@ -1413,6 +1413,11 @@ class App {
     if (btn)  btn.disabled = false;
     if (span) span.textContent = 'Enter Your Universe';
     $('#splash-loading')?.classList.add('hidden');
+
+    // Auto-skip splash if user already chose offline mode on login page
+    if (sessionStorage.getItem('axiomOfflineMode')) {
+      btn?.click();
+    }
   }
 
   /* ── Render signed-in user's avatar + name in sidebar ── */
