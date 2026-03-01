@@ -384,7 +384,7 @@
     </button>
 
     <!-- Offline / Continue without account button -->
-    <button class="offline-btn" id="offline-btn" type="button" style="display:none">
+    <button class="offline-btn" id="offline-btn" type="button">
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
         <path d="M12 2a10 10 0 1 0 0 20A10 10 0 0 0 12 2z"/>
         <path d="M12 8v4l3 3"/>
@@ -548,16 +548,16 @@
     btn.classList.toggle('loading', on);
   }
 
-  // If Supabase isn't configured, show offline mode option instead of bypassing
+  // Offline mode always available as fallback
+  offlineBtn.addEventListener('click', () => {
+    sessionStorage.setItem('axiomOfflineMode', '1');
+    window.location.replace(cfg?.mainPage || 'index.html');
+  });
+
+  // If Supabase isn't configured, hide Google button and show notice
   if (!sb || !cfg?.isConfigured) {
     btn.style.display = 'none';
     notice.classList.add('visible');
-    offlineBtn.style.display = 'flex';
-
-    offlineBtn.addEventListener('click', () => {
-      sessionStorage.setItem('axiomOfflineMode', '1');
-      window.location.replace(cfg?.mainPage || 'index.html');
-    });
     return;
   }
 
@@ -578,8 +578,8 @@
     errEl.classList.remove('visible');
 
     try {
-      const redirectTo = window.location.href
-        .replace('login.html', cfg.mainPage || 'index.html');
+      const origin = 'https://tanishqtule.github.io/Axiom';
+      const redirectTo = origin + '/' + (cfg.mainPage || 'index.html');
 
       const { error } = await sb.auth.signInWithOAuth({
         provider: 'google',
