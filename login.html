@@ -281,6 +281,48 @@
       z-index: 0;
       pointer-events: none;
     }
+
+    /* ── Offline mode button ── */
+    .offline-btn {
+      width: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      padding: 12px 24px;
+      margin-top: 12px;
+      background: transparent;
+      color: var(--text-muted);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      font-family: 'Inter', sans-serif;
+      font-size: 0.9rem;
+      font-weight: 400;
+      cursor: pointer;
+      transition: border-color 0.2s, color 0.2s, background 0.2s;
+    }
+
+    .offline-btn:hover {
+      border-color: rgba(255,255,255,0.2);
+      color: var(--text);
+      background: rgba(255,255,255,0.04);
+    }
+
+    /* ── Unconfigured notice ── */
+    .unconfigured-notice {
+      margin-bottom: 16px;
+      padding: 10px 14px;
+      background: rgba(245,158,11,0.1);
+      border: 1px solid rgba(245,158,11,0.2);
+      border-radius: 8px;
+      color: #fcd34d;
+      font-size: 0.8rem;
+      font-family: 'Inter', sans-serif;
+      line-height: 1.45;
+      display: none;
+    }
+
+    .unconfigured-notice.visible { display: block; }
   </style>
 </head>
 <body>
@@ -321,6 +363,12 @@
 
     <div class="login-divider"><span>continue with</span></div>
 
+    <!-- Unconfigured notice -->
+    <div class="unconfigured-notice" id="unconfigured-notice">
+      Supabase is not configured. Google sign-in is unavailable.<br>
+      You can still use Axiom in offline mode.
+    </div>
+
     <!-- Google OAuth button -->
     <button class="google-btn" id="google-btn" type="button">
       <!-- Google logo SVG -->
@@ -333,6 +381,15 @@
       <div class="btn-spinner"></div>
       <span class="btn-text">Sign in with Google</span>
       <div class="btn-shimmer"></div>
+    </button>
+
+    <!-- Offline / Continue without account button -->
+    <button class="offline-btn" id="offline-btn" type="button" style="display:none">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M12 2a10 10 0 1 0 0 20A10 10 0 0 0 12 2z"/>
+        <path d="M12 8v4l3 3"/>
+      </svg>
+      Continue without account
     </button>
 
     <div class="login-error" id="login-error"></div>
@@ -474,10 +531,12 @@
    AUTH LOGIC
 ──────────────────────────────────────────────────────── */
 (async function () {
-  const sb       = window.axiomSupabase;
-  const cfg      = window.AXIOM_CONFIG;
-  const btn      = document.getElementById('google-btn');
-  const errEl    = document.getElementById('login-error');
+  const sb         = window.axiomSupabase;
+  const cfg        = window.AXIOM_CONFIG;
+  const btn        = document.getElementById('google-btn');
+  const offlineBtn = document.getElementById('offline-btn');
+  const errEl      = document.getElementById('login-error');
+  const notice     = document.getElementById('unconfigured-notice');
 
   function showError(msg) {
     errEl.textContent = msg;
@@ -489,9 +548,16 @@
     btn.classList.toggle('loading', on);
   }
 
-  // If Supabase isn't configured, skip to main app (offline mode)
+  // If Supabase isn't configured, show offline mode option instead of bypassing
   if (!sb || !cfg?.isConfigured) {
-    window.location.replace(cfg?.mainPage || 'index.html');
+    btn.style.display = 'none';
+    notice.classList.add('visible');
+    offlineBtn.style.display = 'flex';
+
+    offlineBtn.addEventListener('click', () => {
+      sessionStorage.setItem('axiomOfflineMode', '1');
+      window.location.replace(cfg?.mainPage || 'index.html');
+    });
     return;
   }
 

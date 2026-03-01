@@ -1385,6 +1385,11 @@ class App {
       } catch (e) {
         console.warn('[Axiom] Auth/load failed, offline mode:', e.message);
       }
+    } else if (!sessionStorage.getItem('axiomOfflineMode')) {
+      // Supabase not configured — require user to explicitly choose offline mode
+      const loginPage = cfg?.loginPage || 'login.html';
+      window.location.replace(loginPage);
+      return;
     }
 
     this._boot(preloaded);
