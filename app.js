@@ -1375,21 +1375,16 @@ class App {
       try {
         const { data: { session }, error } = await sb.auth.getSession();
         if (error) throw error;
-        if (!session) {
-          window.location.replace(cfg.loginPage || 'login.html');
-          return;
+        if (session) {
+          // Already logged in — preload data so the app is ready instantly
+          this.storage.userId = session.user.id;
+          this.storage.user   = session.user;
+          preloaded = await this.storage.load();
         }
-        this.storage.userId = session.user.id;
-        this.storage.user   = session.user;
-        preloaded = await this.storage.load();
+        // No session → don't redirect yet; let the splash show first
       } catch (e) {
         console.warn('[Axiom] Auth/load failed, offline mode:', e.message);
       }
-    } else if (!sessionStorage.getItem('axiomOfflineMode')) {
-      // Supabase not configured — require user to explicitly choose offline mode
-      const loginPage = cfg?.loginPage || 'login.html';
-      window.location.replace(loginPage);
-      return;
     }
 
     this._boot(preloaded);
@@ -1442,7 +1437,26 @@ class App {
   }
 
   _bindSplash() {
-    $('#enter-btn').addEventListener('click', () => {
+    $('#enter-btn').addEventListener('click', async () => {
+      const sb  = window.axiomSupabase;
+      const cfg = (typeof AXIOM_CONFIG !== 'undefined') ? AXIOM_CONFIG : null;
+
+      // Auth gate: redirect to login if no valid session / offline approval
+      if (sb && cfg?.isConfigured) {
+        try {
+          const { data: { session } } = await sb.auth.getSession();
+          if (!session) {
+            window.location.replace(cfg.loginPage || 'login.html');
+            return;
+          }
+        } catch (e) {
+          console.warn('[Axiom] Session check failed:', e.message);
+        }
+      } else if (!sessionStorage.getItem('axiomOfflineMode')) {
+        window.location.replace(cfg?.loginPage || 'login.html');
+        return;
+      }
+
       const splash = $('#splash');
       splash.style.transition = 'opacity 0.8s ease, transform 0.8s ease';
       splash.style.opacity    = '0';
