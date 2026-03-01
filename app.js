@@ -1445,7 +1445,7 @@ class App {
       if (sb && cfg?.isConfigured) {
         try {
           const { data: { session } } = await sb.auth.getSession();
-          if (!session) {
+          if (!session && !sessionStorage.getItem('axiomOfflineMode')) {
             window.location.replace(cfg.loginPage || 'login.html');
             return;
           }
