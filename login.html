@@ -365,7 +365,7 @@
 
     <!-- Unconfigured notice -->
     <div class="unconfigured-notice" id="unconfigured-notice">
-      Supabase is not configured. Google sign-in is unavailable.<br>
+      Firebase is not configured yet. Google sign-in is unavailable.<br>
       You can still use Axiom in offline mode.
     </div>
 
@@ -407,8 +407,10 @@
 
 <!-- Scripts (order matters) -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="supabase-config.js"></script>
+<!-- Firebase SDKs (compat v9) -->
+<script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-auth-compat.js"></script>
+<script src="firebase-config.js"></script>
 
 <script>
 /* ────────────────────────────────────────────────────────
@@ -528,11 +530,11 @@
 })();
 
 /* ────────────────────────────────────────────────────────
-   AUTH LOGIC
+   AUTH LOGIC  (Firebase Google Sign-In)
 ──────────────────────────────────────────────────────── */
-(async function () {
-  const sb         = window.axiomSupabase;
-  const cfg        = window.AXIOM_CONFIG;
+(function () {
+  const auth       = window.axiomAuth;
+  const cfg        = window.axiomFirebaseConfig;
   const btn        = document.getElementById('google-btn');
   const offlineBtn = document.getElementById('offline-btn');
   const errEl      = document.getElementById('login-error');
@@ -548,60 +550,43 @@
     btn.classList.toggle('loading', on);
   }
 
-  // Offline mode always available as fallback
+  // Offline mode is always available as a fallback
   offlineBtn.addEventListener('click', () => {
     sessionStorage.setItem('axiomOfflineMode', '1');
     window.location.replace(cfg?.mainPage || 'index.html');
   });
 
-  // If Supabase isn't configured, hide Google button and show notice
-  if (!sb || !cfg?.isConfigured) {
+  // If Firebase is not configured, hide Google button and show notice
+  if (!auth || !cfg?.isConfigured) {
     btn.style.display = 'none';
     notice.classList.add('visible');
     return;
   }
 
-  // If already logged in, go straight to the app
-  try {
-    const { data: { session } } = await sb.auth.getSession();
-    if (session) {
+  // Listen for auth state — redirect to app if already signed in
+  auth.onAuthStateChanged(user => {
+    if (user) {
       window.location.replace(cfg.mainPage || 'index.html');
-      return;
     }
-  } catch (e) {
-    console.warn('Session check error:', e.message);
-  }
+  });
 
-  // Google sign-in
+  // Google sign-in via popup (works without redirect domain configuration)
   btn.addEventListener('click', async () => {
     setLoading(true);
     errEl.classList.remove('visible');
 
     try {
-      const origin = 'https://tanishqtule.github.io/Axiom';
-      const redirectTo = origin + '/' + (cfg.mainPage || 'index.html');
-
-      const { error } = await sb.auth.signInWithOAuth({
-        provider: 'google',
-        options: {
-          redirectTo,
-          queryParams: { access_type: 'offline', prompt: 'consent' }
-        }
-      });
-
-      if (error) throw error;
-      // Browser will redirect — loading state stays visible
-
+      const provider = new firebase.auth.GoogleAuthProvider();
+      provider.addScope('profile');
+      provider.addScope('email');
+      // onAuthStateChanged will fire on success and trigger the redirect above
+      await auth.signInWithPopup(provider);
     } catch (e) {
       setLoading(false);
-      showError(e.message || 'Sign-in failed. Please try again.');
-    }
-  });
-
-  // Listen for auth state changes (handles OAuth redirect callback)
-  sb.auth.onAuthStateChange((event, session) => {
-    if (event === 'SIGNED_IN' && session) {
-      window.location.replace(cfg.mainPage || 'index.html');
+      // auth/popup-closed-by-user is not a real error — user just closed it
+      if (e.code !== 'auth/popup-closed-by-user') {
+        showError(e.message || 'Sign-in failed. Please try again.');
+      }
     }
   });
 })();
