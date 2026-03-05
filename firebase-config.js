@@ -26,12 +26,13 @@
 ════════════════════════════════════════════════════════ */
 
 const AXIOM_FIREBASE_CONFIG = {
-  apiKey:            'YOUR_API_KEY',
-  authDomain:        'YOUR_PROJECT_ID.firebaseapp.com',
-  projectId:         'YOUR_PROJECT_ID',
-  storageBucket:     'YOUR_PROJECT_ID.appspot.com',
-  messagingSenderId: 'YOUR_MESSAGING_SENDER_ID',
-  appId:             'YOUR_APP_ID',
+  apiKey:            'AIzaSyAvPtyouUI4MAgLT57bdO_ADSrE67dTTeg',
+  authDomain:        'axiom-d125c.firebaseapp.com',
+  projectId:         'axiom-d125c',
+  storageBucket:     'axiom-d125c.firebasestorage.app',
+  messagingSenderId: '996947511545',
+  appId:             '1:996947511545:web:3b9b09e3025fbd79affa28',
+  measurementId:     'G-GTSVVHDBFS',
 
   loginPage: 'login.html',
   mainPage:  'index.html',
