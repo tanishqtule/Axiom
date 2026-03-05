@@ -26,102 +26,236 @@ function fmtFullDate(ts) {
 }
 
 /* ════════════════════════════════════════════════════════
-   SUPABASE STORAGE MANAGER
-   Cloud-first, localStorage as local cache / offline fallback
+   ENCRYPTION MANAGER
+   AES-256-GCM client-side encryption using Web Crypto API.
+   Key is derived from userId via PBKDF2 so notes are
+   unreadable in Firebase without the signed-in user's UID.
 ════════════════════════════════════════════════════════ */
-class SupabaseManager {
+class EncryptionManager {
+  constructor(userId) {
+    this._userId   = userId;
+    this._keyCache = null;
+  }
+
+  async _getKey() {
+    if (this._keyCache) return this._keyCache;
+    const enc         = new TextEncoder();
+    const keyMaterial = await crypto.subtle.importKey(
+      'raw',
+      enc.encode(this._userId + ':axiom-encryption-v1'),
+      'PBKDF2',
+      false,
+      ['deriveKey']
+    );
+    this._keyCache = await crypto.subtle.deriveKey(
+      {
+        name:       'PBKDF2',
+        salt:       enc.encode('axiom-firestore-salt-v1'),
+        iterations: 150000,
+        hash:       'SHA-256'
+      },
+      keyMaterial,
+      { name: 'AES-GCM', length: 256 },
+      false,
+      ['encrypt', 'decrypt']
+    );
+    return this._keyCache;
+  }
+
+  /* Returns base64 string: 12-byte IV || ciphertext */
+  async encrypt(plaintext) {
+    try {
+      const key       = await this._getKey();
+      const iv        = crypto.getRandomValues(new Uint8Array(12));
+      const encoded   = new TextEncoder().encode(plaintext);
+      const encrypted = await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, key, encoded);
+      const buf       = new Uint8Array(12 + encrypted.byteLength);
+      buf.set(iv, 0);
+      buf.set(new Uint8Array(encrypted), 12);
+      return btoa(String.fromCharCode(...buf));
+    } catch (e) {
+      console.warn('[Axiom] Encryption failed:', e.message);
+      return plaintext; // graceful fallback
+    }
+  }
+
+  /* Decrypts a base64 blob produced by encrypt() */
+  async decrypt(b64) {
+    try {
+      const key       = await this._getKey();
+      const buf       = Uint8Array.from(atob(b64), c => c.charCodeAt(0));
+      const iv        = buf.slice(0, 12);
+      const data      = buf.slice(12);
+      const decrypted = await crypto.subtle.decrypt({ name: 'AES-GCM', iv }, key, data);
+      return new TextDecoder().decode(decrypted);
+    } catch (e) {
+      console.warn('[Axiom] Decryption failed:', e.message);
+      return null; // signals a failed decrypt
+    }
+  }
+}
+
+/* ════════════════════════════════════════════════════════
+   FIREBASE STORAGE MANAGER
+   Cloud-first (Firestore), localStorage as offline cache.
+   All sensitive fields (title, content, tags) are
+   AES-256-GCM encrypted before leaving the browser.
+════════════════════════════════════════════════════════ */
+class FirebaseManager {
   constructor() {
-    this.client  = window.axiomSupabase || null;
+    this.db      = window.axiomDb   || null;
     this.userId  = null;
     this.user    = null;
     this._lsKey  = 'axiom_vault';
     this._setKey = 'axiom_settings';
     this._bulkTimer = null;
+    this._crypto    = null; // EncryptionManager — created after userId is set
   }
 
-  /* ── DB row ↔ app note conversions ── */
-  _fromDB(row) {
-    return {
-      id:         row.id,
-      title:      row.title      || '',
-      content:    row.content    || '',
-      tags:       row.tags       || [],
-      created:    new Date(row.created_at).getTime(),
-      modified:   new Date(row.updated_at).getTime(),
-      isFavorite: row.is_favorite || false
-    };
+  /* ── Lazy-init the per-user encryption engine ── */
+  _initCrypto() {
+    if (!this._crypto && this.userId) {
+      this._crypto = new EncryptionManager(this.userId);
+    }
   }
 
-  _toDB(note) {
-    return {
-      id:         note.id,
-      user_id:    this.userId,
+  /* ── Firestore document ID for a note ── */
+  _docId(noteId) { return `${this.userId}_${noteId}`; }
+
+  /* ── Encrypt a note's sensitive fields into a single blob ── */
+  async _encryptNote(note) {
+    this._initCrypto();
+    if (!this._crypto) return JSON.stringify(note); // offline: store as-is
+    const payload = JSON.stringify({
       title:      note.title,
       content:    note.content,
       tags:       note.tags,
-      is_favorite: note.isFavorite,
-      created_at: new Date(note.created).toISOString(),
-      updated_at: new Date(note.modified).toISOString()
-    };
+      isFavorite: note.isFavorite
+    });
+    return this._crypto.encrypt(payload);
   }
 
-  /* ── Load all notes (async, called once at boot) ── */
+  /* ── Decrypt a Firestore document back into an app note ── */
+  async _decryptDoc(docData) {
+    const base = {
+      id:       docData.note_id,
+      created:  docData.created_at?.toMillis
+                  ? docData.created_at.toMillis()
+                  : Date.now(),
+      modified: docData.updated_at?.toMillis
+                  ? docData.updated_at.toMillis()
+                  : Date.now()
+    };
+
+    if (!this._crypto || !docData.encrypted_data) {
+      // Unencrypted fallback (e.g. offline-created notes)
+      return {
+        ...base,
+        title:      docData.title      || '',
+        content:    docData.content    || '',
+        tags:       docData.tags       || [],
+        isFavorite: docData.is_favorite || false
+      };
+    }
+
+    const json = await this._crypto.decrypt(docData.encrypted_data);
+    if (!json) {
+      return { ...base, title: '(Could not decrypt)', content: '', tags: [], isFavorite: false };
+    }
+    try {
+      return { ...base, ...JSON.parse(json) };
+    } catch {
+      return { ...base, title: '(Corrupt data)', content: '', tags: [], isFavorite: false };
+    }
+  }
+
+  /* ── Load all notes for the current user ── */
   async load() {
-    if (this.client && this.userId) {
+    this._initCrypto();
+    if (this.db && this.userId) {
       try {
-        const { data, error } = await this.client
-          .from('notes')
-          .select('*')
-          .order('updated_at', { ascending: false });
-        if (error) throw error;
-        const notes = (data || []).map(r => this._fromDB(r));
-        // Cache locally
+        const snap = await this.db
+          .collection('notes')
+          .where('user_id', '==', this.userId)
+          .orderBy('updated_at', 'desc')
+          .get();
+
+        const notes = await Promise.all(
+          snap.docs.map(d => this._decryptDoc(d.data()))
+        );
+
+        // Cache locally for offline use
         localStorage.setItem(this._lsKey, JSON.stringify(notes));
         return notes;
       } catch (e) {
-        console.warn('[Axiom] Supabase load failed, using local cache:', e.message);
+        console.warn('[Axiom] Firestore load failed, using local cache:', e.message);
       }
     }
     // Offline / unconfigured fallback
     try { return JSON.parse(localStorage.getItem(this._lsKey) || '[]'); } catch { return []; }
   }
 
-  /* ── Sync individual note to cloud (fire-and-forget) ── */
+  /* ── Upsert a single note (fire-and-forget) ── */
   async upsertNote(note) {
-    if (!this.client || !this.userId) return;
+    if (!this.db || !this.userId) return;
     try {
-      const { error } = await this.client.from('notes').upsert(this._toDB(note));
-      if (error) console.warn('[Axiom] upsert error:', error.message);
-    } catch (e) { console.warn('[Axiom] upsert error:', e.message); }
+      const encrypted = await this._encryptNote(note);
+      await this.db.collection('notes').doc(this._docId(note.id)).set({
+        user_id:        this.userId,
+        note_id:        note.id,
+        encrypted_data: encrypted,
+        created_at:     firebase.firestore.Timestamp.fromMillis(note.created),
+        updated_at:     firebase.firestore.Timestamp.fromMillis(note.modified)
+      }, { merge: true });
+    } catch (e) {
+      console.warn('[Axiom] Firestore upsert error:', e.message);
+    }
   }
 
-  /* ── Delete a single note from cloud ── */
+  /* ── Delete a single note from Firestore ── */
   async deleteNote(id) {
-    if (!this.client || !this.userId) return;
+    if (!this.db || !this.userId) return;
     try {
-      const { error } = await this.client.from('notes').delete().eq('id', id);
-      if (error) console.warn('[Axiom] delete error:', error.message);
-    } catch (e) { console.warn('[Axiom] delete error:', e.message); }
+      await this.db.collection('notes').doc(this._docId(id)).delete();
+    } catch (e) {
+      console.warn('[Axiom] Firestore delete error:', e.message);
+    }
   }
 
-  /* ── Bulk save — keeps localStorage in sync; debounces cloud sync ── */
+  /* ── Bulk save: localStorage immediately, cloud debounced ── */
   save(notes) {
     localStorage.setItem(this._lsKey, JSON.stringify(notes));
-    // Debounced bulk upsert (covers _createSampleNotes and import)
     clearTimeout(this._bulkTimer);
     this._bulkTimer = setTimeout(() => this._bulkSync(notes), 4000);
   }
 
   async _bulkSync(notes) {
-    if (!this.client || !this.userId) return;
+    if (!this.db || !this.userId) return;
     try {
-      const rows = notes.map(n => this._toDB(n));
-      const { error } = await this.client.from('notes').upsert(rows);
-      if (error) console.warn('[Axiom] bulk sync error:', error.message);
-    } catch (e) { console.warn('[Axiom] bulk sync error:', e.message); }
+      // Firestore batch supports up to 500 writes; split if needed
+      const BATCH_SIZE = 400;
+      for (let i = 0; i < notes.length; i += BATCH_SIZE) {
+        const chunk = notes.slice(i, i + BATCH_SIZE);
+        const batch = this.db.batch();
+        await Promise.all(chunk.map(async note => {
+          const encrypted = await this._encryptNote(note);
+          const ref = this.db.collection('notes').doc(this._docId(note.id));
+          batch.set(ref, {
+            user_id:        this.userId,
+            note_id:        note.id,
+            encrypted_data: encrypted,
+            created_at:     firebase.firestore.Timestamp.fromMillis(note.created),
+            updated_at:     firebase.firestore.Timestamp.fromMillis(note.modified)
+          }, { merge: true });
+        }));
+        await batch.commit();
+      }
+    } catch (e) {
+      console.warn('[Axiom] Bulk sync error:', e.message);
+    }
   }
 
-  /* ── Settings (localStorage only, fast) ── */
+  /* ── Settings (localStorage only — fast, not sensitive) ── */
   loadSettings() {
     try { return JSON.parse(localStorage.getItem(this._setKey) || '{}'); } catch { return {}; }
   }
@@ -130,13 +264,19 @@ class SupabaseManager {
     localStorage.setItem(this._setKey, JSON.stringify(s));
   }
 
-  /* ── Clear vault ── */
+  /* ── Clear entire vault (local + cloud) ── */
   clear() {
     localStorage.removeItem(this._lsKey);
-    if (this.client && this.userId) {
-      // Best-effort cloud delete
-      this.client.from('notes').delete().eq('user_id', this.userId)
-        .then(({ error }) => { if (error) console.warn('[Axiom] clear error:', error.message); });
+    if (this.db && this.userId) {
+      this.db.collection('notes')
+        .where('user_id', '==', this.userId)
+        .get()
+        .then(snap => {
+          const batch = this.db.batch();
+          snap.docs.forEach(d => batch.delete(d.ref));
+          return batch.commit();
+        })
+        .catch(e => console.warn('[Axiom] Clear error:', e.message));
     }
   }
 }
@@ -1359,7 +1499,7 @@ function initCursorGlow() {
 ════════════════════════════════════════════════════════ */
 class App {
   constructor() {
-    this.storage = new SupabaseManager();
+    this.storage = new FirebaseManager();
     this.toast   = new ToastManager();
     window.axiomApp = this;
     this._initAsync();
@@ -1368,22 +1508,23 @@ class App {
   /* ── Async boot: auth check → load notes → _boot() ── */
   async _initAsync() {
     let preloaded = null;
-    const sb  = window.axiomSupabase;
-    const cfg = (typeof AXIOM_CONFIG !== 'undefined') ? AXIOM_CONFIG : null;
+    const auth = window.axiomAuth;
 
-    if (sb && cfg?.isConfigured) {
+    if (auth) {
       try {
-        const { data: { session }, error } = await sb.auth.getSession();
-        if (error) throw error;
-        if (session) {
-          // Already logged in — preload data so the app is ready instantly
-          this.storage.userId = session.user.id;
-          this.storage.user   = session.user;
+        // Wait for Firebase to resolve the current auth state (fires once)
+        const user = await new Promise(resolve => {
+          const unsub = auth.onAuthStateChanged(u => { unsub(); resolve(u); });
+        });
+
+        if (user) {
+          this.storage.userId = user.uid;
+          this.storage.user   = user;
           preloaded = await this.storage.load();
         }
-        // No session → don't redirect yet; let the splash show first
+        // No user → let the splash show, then gate at Enter button
       } catch (e) {
-        console.warn('[Axiom] Auth/load failed, offline mode:', e.message);
+        console.warn('[Axiom] Firebase auth/load failed, offline mode:', e.message);
       }
     }
 
@@ -1426,13 +1567,12 @@ class App {
     const el   = $('#user-profile');
     if (!user || !el) return;
 
-    const name   = user.user_metadata?.full_name
-                || user.email?.split('@')[0]
-                || 'User';
-    const avatar = user.user_metadata?.avatar_url;
+    // Firebase user object uses displayName + photoURL (not user_metadata)
+    const name   = user.displayName || user.email?.split('@')[0] || 'User';
+    const avatar = user.photoURL;
 
     if (avatar) {
-      el.innerHTML = `<img src="${avatar}" alt="${name}" class="user-avatar" />
+      el.innerHTML = `<img src="${avatar}" alt="${name}" class="user-avatar" referrerpolicy="no-referrer" />
                       <span class="sl-text user-name" title="${user.email}">${name.split(' ')[0]}</span>`;
     } else {
       el.innerHTML = `<div class="user-avatar-initials">${name.slice(0, 2).toUpperCase()}</div>
@@ -1443,15 +1583,17 @@ class App {
 
   _bindSplash() {
     $('#enter-btn').addEventListener('click', async () => {
-      const sb  = window.axiomSupabase;
-      const cfg = (typeof AXIOM_CONFIG !== 'undefined') ? AXIOM_CONFIG : null;
+      const auth = window.axiomAuth;
+      const cfg  = window.axiomFirebaseConfig || null;
 
-      // Auth gate: redirect to login if no valid session / offline approval
-      if (sb && cfg?.isConfigured) {
+      // Auth gate: redirect to login if no valid session and not in offline mode
+      if (auth) {
         try {
-          const { data: { session } } = await sb.auth.getSession();
-          if (!session && !sessionStorage.getItem('axiomOfflineMode')) {
-            window.location.replace(cfg.loginPage || 'login.html');
+          const user = await new Promise(resolve => {
+            const unsub = auth.onAuthStateChanged(u => { unsub(); resolve(u); });
+          });
+          if (!user && !sessionStorage.getItem('axiomOfflineMode')) {
+            window.location.replace(cfg?.loginPage || 'login.html');
             return;
           }
         } catch (e) {
@@ -1556,10 +1698,10 @@ class App {
 
     // Sign out
     $('#signout-btn')?.addEventListener('click', async () => {
-      if (window.axiomSupabase) await window.axiomSupabase.auth.signOut();
-      const loginPage = (typeof AXIOM_CONFIG !== 'undefined')
-        ? AXIOM_CONFIG.loginPage : 'login.html';
-      window.location.replace(loginPage);
+      if (window.axiomAuth) await window.axiomAuth.signOut();
+      sessionStorage.removeItem('axiomOfflineMode');
+      const cfg = window.axiomFirebaseConfig;
+      window.location.replace(cfg?.loginPage || 'login.html');
     });
 
     // Graph controls
